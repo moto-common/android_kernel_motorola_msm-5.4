@@ -1542,6 +1542,7 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 	u8 *buffer = NULL;
 	u32 cnt = 0;
 	u8 *cmdbuf;
+	const u8 *dsi_buf;
 
 	/* Select the tx mode to transfer the command */
 	dsi_message_setup_tx_mode(dsi_ctrl, msg->tx_len, flags);
@@ -1585,6 +1586,14 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 
 		goto kickoff;
 	}
+
+	dsi_buf = msg->tx_buf;
+	if ((dsi_buf[0] == MIPI_DCS_READ_MEMORY_START) ||
+		(dsi_buf[0] == MIPI_DCS_READ_MEMORY_CONTINUE)) {
+                DSI_CTRL_ERR(dsi_ctrl, "%s: Invalid dsi_cmd=0x%4x\n", __func__, dsi_buf[0]);
+		rc = -EINVAL;
+		goto error;
+        }
 
 	rc = mipi_dsi_create_packet(&packet, msg);
 	if (rc) {
