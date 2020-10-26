@@ -302,8 +302,8 @@ struct dsi_display {
 
 	int tx_cmd_buf_ndx;
 	struct dsi_panel_cmd_set cmd_set;
-
 	bool enabled;
+	u32 panel_idx;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);
