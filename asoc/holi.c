@@ -5214,6 +5214,21 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	},
 };
 
+static struct snd_soc_dai_link msm_sec_mi2s_tx_hotless_dai_links[] = {
+	{
+		.name = "Secondary MI2S_TX Hostless",
+		.stream_name = "Secondary MI2S_TX Hostless Capture",
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		SND_SOC_DAILINK_REG(sec_mi2s_tx_hostless),
+	},
+};
+
 static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 	{/* hw:x,33 */
 		.name = MSM_DAILINK_NAME(ASM Loopback),
@@ -5923,7 +5938,8 @@ static struct snd_soc_dai_link msm_holi_dai_links[
 			ARRAY_SIZE(msm_rx_tx_cdc_dma_be_dai_links) +
 			ARRAY_SIZE(msm_va_cdc_dma_be_dai_links) +
 			ARRAY_SIZE(msm_afe_rxtx_lb_be_dai_link) +
-			ARRAY_SIZE(msm_wcn_btfm_be_dai_links)];
+			ARRAY_SIZE(msm_wcn_btfm_be_dai_links) +
+			ARRAY_SIZE(msm_sec_mi2s_tx_hotless_dai_links)];
 
 static int msm_populate_dai_link_component_of_node(
 					struct snd_soc_card *card)
@@ -6272,6 +6288,14 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 					ARRAY_SIZE(msm_wcn_btfm_be_dai_links);
 			}
 		}
+
+		if (mi2s_audio_intf) {
+			memcpy(msm_holi_dai_links + total_links,
+				msm_sec_mi2s_tx_hotless_dai_links,
+				sizeof(msm_sec_mi2s_tx_hotless_dai_links));
+			total_links += ARRAY_SIZE(msm_sec_mi2s_tx_hotless_dai_links);
+		}
+
 		dailink = msm_holi_dai_links;
 	} else if (!strcmp(match->data, "stub_codec")) {
 		card = &snd_soc_card_stub_msm;

@@ -246,6 +246,10 @@ struct aw882xx {
 #ifdef AW882XX_RUNIN_TEST
 	struct delayed_work adsp_status;
 #endif
+	struct delayed_work fade_work;
+	int delayed_time;
+	int fade_work_start;
+	int is_fade_in;
 	int sysclk;
 	int rate;
 	int pstream;
@@ -269,6 +273,7 @@ struct aw882xx {
 	unsigned int afe_rx_portid;
 	unsigned int afe_tx_portid;
 	unsigned int afe_profile;
+	unsigned int fade_flag;
 	struct  profile_info profile;
 };
 

@@ -481,3 +481,8 @@ SND_SOC_DAILINK_DEFS(proxy_rx,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-dev.8194")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-rx")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+
+SND_SOC_DAILINK_DEFS(sec_mi2s_tx_hostless,
+	DAILINK_COMP_ARRAY(COMP_CPU("SEC_MI2S_TX_HOSTLESS")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-hostless")));
