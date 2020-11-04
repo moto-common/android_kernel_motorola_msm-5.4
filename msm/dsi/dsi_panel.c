@@ -397,7 +397,7 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 	return rc;
 }
 
-#if defined(MOTO_PANEL_CHECK_TOUCH_STATE)
+
 static int touch_state[PANEL_IDX_MAX] = {0};
 int touch_set_state(int state, int panel_idx)
 {
@@ -422,7 +422,6 @@ static int check_touch_state(int *state, int panel_idx)
 	return rc;
 }
 
-
 static bool panel_power_is_alway_on(struct dsi_panel *panel)
 {
 	int touch_state = 0;
@@ -442,12 +441,6 @@ static bool panel_power_is_alway_on(struct dsi_panel *panel)
 
 	return rc;
 }
-#else
-static bool panel_power_is_alway_on(struct dsi_panel *panel)
-{
-	return 0;
-}
-#endif
 
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
