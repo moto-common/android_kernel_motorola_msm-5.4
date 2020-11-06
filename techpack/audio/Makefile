@@ -30,7 +30,12 @@ endif
 ifeq ($(CONFIG_ARCH_SA6155), y)
 include $(srctree)/techpack/audio/config/sa6155auto.conf
 endif
+ifeq ($(CONFIG_DENVER_DTB), y)
+include $(srctree)/techpack/audio/config/holidenver.conf
+export $(shell sed 's/=.*//' $(srctree)/techpack/audio/config/holidenver.conf)
 endif
+endif
+
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
                 -I$(srctree)/techpack/audio/include/uapi/audio
@@ -78,6 +83,10 @@ endif
 ifeq ($(CONFIG_ARCH_SA6155), y)
 LINUXINCLUDE    += \
                 -include $(srctree)/techpack/audio/config/sa6155autoconf.h
+endif
+ifeq ($(CONFIG_DENVER_DTB), y)
+LINUXINCLUDE    += \
+                -include $(srctree)/techpack/audio/config/holidenverautoconf.h
 endif
 
 obj-y += soc/
