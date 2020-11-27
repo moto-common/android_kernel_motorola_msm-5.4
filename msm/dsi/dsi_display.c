@@ -8745,7 +8745,6 @@ static void dsi_display_panel_id_notification(struct dsi_display *display)
 	}
 }
 
-/* start of MMI_STOPSHIP section */
 struct dsi_enable_status {
 	struct dsi_display *display;
 	int probed;
