@@ -41,6 +41,7 @@ struct dsi_vreg {
 	u32 post_on_sleep;
 	u32 pre_off_sleep;
 	u32 post_off_sleep;
+	bool is_always_on;
 };
 
 /**
