@@ -117,6 +117,7 @@ struct dsi_dfps_capabilities {
 	u32 *dfps_list;
 	u32 dfps_list_len;
 	bool dfps_support;
+	bool dfps_send_cmd_support;
 };
 
 struct dsi_qsync_capabilities {
@@ -523,5 +524,6 @@ int dsi_panel_get_elvss_data(struct dsi_panel *panel);
 int dsi_panel_get_elvss_data_1(struct dsi_panel *panel);
 int dsi_panel_set_elvss_dim_off(struct dsi_panel *panel, u8 val);
 int dsi_panel_parse_elvss_config(struct dsi_panel *panel, u8 elv_vl);
+int dsi_panel_dfps_send_cmd(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_H_ */
