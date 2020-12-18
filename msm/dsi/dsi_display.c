@@ -5732,6 +5732,10 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 					DSI_ERR("Fail to add timing params\n");
 			}
 		}
+
+		if (display->panel->dfps_caps.dfps_send_cmd_support)
+			dsi_panel_dfps_send_cmd(display->panel);
+
 		if (!(mode->dsi_mode_flags & DSI_MODE_FLAG_DYN_CLK))
 			return rc;
 	}
