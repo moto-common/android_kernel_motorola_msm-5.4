@@ -6477,70 +6477,6 @@ static void dsi_display_firmware_display(const struct firmware *fw,
 	DSI_DEBUG("success\n");
 }
 
-/*
-	Add /sys/class/panel path, other module can get panel info from this path.
-*/
-static ssize_t panel_supplier_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct dsi_display *display;
-	struct platform_device *pdev = to_platform_device(dev);
-
-	display = platform_get_drvdata(pdev);
-	return scnprintf(buf, PAGE_SIZE, display->panel->panel_supplier);
-}
-
-static struct device_attribute panel_attributes[] = {
-	__ATTR_RO(panel_supplier),
-	__ATTR_NULL
-};
-
-static int panel_class_create(struct platform_device *pdev)
-{
-	static struct class *panel_class;
-	static struct device *panel_class_dev;
-	struct device_attribute *attrs = panel_attributes;
-	struct dsi_display *display = NULL;
-	int i, error = 0;
-
-	panel_class = class_create(THIS_MODULE, "panel");
-	if (IS_ERR(panel_class)) {
-		error = PTR_ERR(panel_class);
-		panel_class = NULL;
-		return error;
-	}
-
-	display = platform_get_drvdata(pdev);
-	panel_class_dev = device_create(panel_class, NULL, 0, display,
-		display->panel->panel_supplier);
-	if (IS_ERR(panel_class_dev)) {
-		error = PTR_ERR(panel_class_dev);
-		panel_class_dev = NULL;
-		return error;
-	}
-
-	for (i = 0; attrs[i].attr.name != NULL; ++i) {
-		error = device_create_file(panel_class_dev, &attrs[i]);
-		if (error)
-			break;
-	}
-
-	if (error)
-		goto device_destroy;
-
-	return 0;
-
-device_destroy:
-	for (--i; i >= 0; --i)
-		device_remove_file(panel_class_dev, &attrs[i]);
-	device_destroy(panel_class, 0);
-	panel_class_dev = NULL;
-	class_unregister(panel_class);
-	DSI_ERR("creating panel class failed\n");
-
-	return -ENODEV;
-}
-
 int dsi_display_dev_probe(struct platform_device *pdev)
 {
 	struct dsi_display *display = NULL;
@@ -6640,8 +6576,6 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 		if (rc)
 			goto end;
 	}
-
-	panel_class_create(pdev);
 
 	return 0;
 end:
