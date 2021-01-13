@@ -63,7 +63,7 @@ static const struct dsi_ver_spec_info dsi_phy_v2_0 = {
 static const struct dsi_ver_spec_info dsi_phy_v3_0 = {
 	.version = DSI_PHY_VERSION_3_0,
 	.lane_cfg_count = 4,
-	.strength_cfg_count = 2,
+	.strength_cfg_count = 4,
 	.regulator_cfg_count = 0,
 	.timing_cfg_count = 12,
 };
