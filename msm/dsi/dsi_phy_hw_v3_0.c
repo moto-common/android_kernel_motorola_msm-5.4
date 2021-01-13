@@ -194,8 +194,8 @@ static void dsi_phy_hw_v3_0_lane_settings(struct dsi_phy_hw *phy,
 		DSI_W32(phy, DSIPHY_LNX_CFG1(i), cfg->lanecfg.lane[i][1]);
 		DSI_W32(phy, DSIPHY_LNX_CFG2(i), cfg->lanecfg.lane[i][2]);
 		DSI_W32(phy, DSIPHY_LNX_CFG3(i), cfg->lanecfg.lane[i][3]);
-		DSI_W32(phy, DSIPHY_LNX_OFFSET_TOP_CTRL(i), 0x0);
-		DSI_W32(phy, DSIPHY_LNX_OFFSET_BOT_CTRL(i), 0x0);
+		DSI_W32(phy, DSIPHY_LNX_OFFSET_TOP_CTRL(i), cfg->strength.lane[i][2]);
+		DSI_W32(phy, DSIPHY_LNX_OFFSET_BOT_CTRL(i), cfg->strength.lane[i][3]);
 		DSI_W32(phy, DSIPHY_LNX_TX_DCTRL(i), tx_dctrl[i]);
 	}
 }
