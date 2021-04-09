@@ -713,8 +713,10 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 						 fsm_en);
 			pr_info("%s,compute impedance,zl = %d,zr = %d\n",
                                     __func__, mbhc->zl, mbhc->zr);
-			if ((mbhc->zl > mbhc->mbhc_cfg->linein_th) &&
-				(mbhc->zr > mbhc->mbhc_cfg->linein_th) &&
+			if ((((mbhc->zl > mbhc->mbhc_cfg->linein_th) &&
+				(mbhc->zr > mbhc->mbhc_cfg->linein_th)) ||
+				(mbhc->zl == 0) ||
+				(mbhc->zr == 0)) &&
 				(jack_type == SND_JACK_HEADPHONE)) {
 				jack_type = SND_JACK_LINEOUT;
 				mbhc->force_linein = true;
