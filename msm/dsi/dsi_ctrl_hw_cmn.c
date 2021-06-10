@@ -332,7 +332,7 @@ void dsi_ctrl_hw_cmn_set_video_timing(struct dsi_ctrl_hw *ctrl,
 	u32 reg = 0;
 	u32 hs_start = 0;
 	u32 hs_end, active_h_start, active_h_end, h_total, width = 0;
-	u32 bytes_per_pkt, pkt_per_line, eol_byte_num;
+	u32 bytes_per_pkt, pkt_per_line, eol_byte_num, datatype;
 	u32 vs_start = 0, vs_end = 0;
 	u32 vpos_start = 0, vpos_end, active_v_start, active_v_end, v_total;
 
@@ -342,7 +342,9 @@ void dsi_ctrl_hw_cmn_set_video_timing(struct dsi_ctrl_hw *ctrl,
 				&pkt_per_line, &eol_byte_num);
 		reg = bytes_per_pkt << 16;
 		/* data type of compressed image */
-		reg |= (0x0b << 8);
+		datatype = mode->dsc->datatype;
+		if(!datatype) datatype = 0x0b;
+		reg |= (datatype << 8);
 		/*
 		 * pkt_per_line:
 		 * 0 == 1 pkt
