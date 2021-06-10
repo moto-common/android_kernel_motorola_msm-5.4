@@ -3117,6 +3117,14 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 	}
 	priv_info->dsc.config.bits_per_pixel = data << 4;
 
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsc-datatype",
+			&data);
+	if (rc) {
+		DSI_ERR("failed to parse qcom,mdss-dsc-datatype\n");
+		data = 0x0B;
+	}
+	priv_info->dsc.datatype = data;
+
 	rc = utils->read_u32(utils->data, "qcom,src-chroma-format",
 			&data);
 	if (rc) {
