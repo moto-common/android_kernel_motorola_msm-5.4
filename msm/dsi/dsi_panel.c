@@ -215,10 +215,39 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 				 rc);
 			panel->panel_test_gpio = -1;
 			rc = 0;
+			goto error_release_panel_test;
 		}
 	}
 
+	if (gpio_is_valid(panel->avee_enable_gpio)) {
+		rc = gpio_request(panel->avee_enable_gpio, "avee_enable_gpio");
+		if (rc) {
+			DSI_WARN("request for avee_enable_gpio failed, rc=%d\n",
+				 rc);
+			panel->avee_enable_gpio = -1;
+			rc = 0;
+			goto error_release_avee_enable;
+		}
+	}
+
+	if (gpio_is_valid(panel->avdd_enable_gpio)) {
+		rc = gpio_request(panel->avdd_enable_gpio, "avdd_enable_gpio");
+		if (rc) {
+			DSI_WARN("request for avdd_enable_gpio failed, rc=%d\n",
+				 rc);
+			panel->avdd_enable_gpio = -1;
+			rc = 0;
+		}
+	}
+
+
 	goto error;
+error_release_avee_enable:
+	if (gpio_is_valid(panel->avee_enable_gpio))
+		gpio_free(panel->avee_enable_gpio);
+error_release_panel_test:
+	if (gpio_is_valid(panel->panel_test_gpio))
+		gpio_free(panel->panel_test_gpio);
 error_release_mode_sel:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
 		gpio_free(panel->bl_config.en_gpio);
@@ -447,6 +476,18 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	int rc = 0;
 
 	DSI_INFO("(%s)+\n", panel->name);
+
+	if (gpio_is_valid(panel->avdd_enable_gpio)) {
+		rc = gpio_direction_output(panel->avdd_enable_gpio, 1);
+		if (rc)
+			DSI_ERR("unable to set AVDD Enable gpio rc=%d\n", rc);
+	}
+
+	if (gpio_is_valid(panel->avee_enable_gpio)) {
+		rc = gpio_direction_output(panel->avee_enable_gpio, 1);
+		if (rc)
+			DSI_ERR("unable to set AVEE Enable gpio rc=%d\n", rc);
+	}
 
 	if ((panel->tp_state_check_enable) && (panel->tp_state)) {
 		pr_info("%s: (%s)+power is alway on \n", __func__, panel->name);
@@ -2719,6 +2760,20 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 					0);
 	if (!gpio_is_valid(panel->panel_test_gpio))
 		DSI_DEBUG("%s:%d panel test gpio not specified\n", __func__,
+			 __LINE__);
+
+	panel->avee_enable_gpio = utils->get_named_gpio(utils->data,
+					"qcom,avee-enable-gpio",
+					0);
+	if (!gpio_is_valid(panel->avee_enable_gpio))
+		DSI_DEBUG("%s:%d qcom,avee-enable-gpio not specified\n", __func__,
+			 __LINE__);
+
+	panel->avdd_enable_gpio = utils->get_named_gpio(utils->data,
+					"qcom,avdd-enable-gpio",
+					0);
+	if (!gpio_is_valid(panel->avdd_enable_gpio))
+		DSI_DEBUG("%s:%d qcom,add-enable-gpio not specified\n", __func__,
 			 __LINE__);
 
 error:
