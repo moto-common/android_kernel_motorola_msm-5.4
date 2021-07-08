@@ -1,6 +1,8 @@
 #ifndef __AWINIC_DSP_H__
 #define __AWINIC_DSP_H__
 
+#define AW_QCOM_PLATFORM
+
 /*factor form 12bit(4096) to 1000*/
 #define AW_DSP_RE_TO_SHOW_RE(re)	(((re) * (1000)) >> (12))
 #define AW_SHOW_RE_TO_DSP_RE(re)	(((re) << 12) / (1000))
