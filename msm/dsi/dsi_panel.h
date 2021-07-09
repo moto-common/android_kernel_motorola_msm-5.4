@@ -375,6 +375,8 @@ struct dsi_panel {
 
 	int avee_enable_gpio;
 	int avdd_enable_gpio;
+
+	int hbm_en_gpio;
 };
 
 bool dsi_display_all_displays_dead(void);
