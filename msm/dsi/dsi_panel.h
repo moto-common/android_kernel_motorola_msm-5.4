@@ -373,9 +373,6 @@ struct dsi_panel {
 	int panel_recovery_retry;
 	bool is_panel_dead;
 
-	int avee_enable_gpio;
-	int avdd_enable_gpio;
-
 	int hbm_en_gpio;
 };
 

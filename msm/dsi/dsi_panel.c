@@ -204,7 +204,7 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		rc = gpio_request(r_config->lcd_mode_sel_gpio, "mode_gpio");
 		if (rc) {
 			DSI_ERR("request for mode_gpio failed, rc=%d\n", rc);
-			goto error_release_mode_sel;
+			goto error_release_bl_en;
 		}
 	}
 
@@ -215,29 +215,7 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 				 rc);
 			panel->panel_test_gpio = -1;
 			rc = 0;
-			goto error_release_panel_test;
-		}
-	}
-
-	if (gpio_is_valid(panel->avee_enable_gpio)) {
-		rc = gpio_request(panel->avee_enable_gpio, "avee_enable_gpio");
-		if (rc) {
-			DSI_WARN("request for avee_enable_gpio failed, rc=%d\n",
-				 rc);
-			panel->avee_enable_gpio = -1;
-			rc = 0;
-			goto error_release_avee_enable;
-		}
-	}
-
-	if (gpio_is_valid(panel->avdd_enable_gpio)) {
-		rc = gpio_request(panel->avdd_enable_gpio, "avdd_enable_gpio");
-		if (rc) {
-			DSI_WARN("request for avdd_enable_gpio failed, rc=%d\n",
-				 rc);
-			panel->avdd_enable_gpio = -1;
-			rc = 0;
-			goto error_release_avdd_enable;
+			goto error_release_lcd_mode_sel;
 		}
 	}
 
@@ -248,20 +226,18 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 				 rc);
 			panel->hbm_en_gpio = -1;
 			rc = 0;
+			goto error_release_panel_test;
 		}
 	}
 
 	goto error;
-error_release_avdd_enable:
-	if (gpio_is_valid(panel->avdd_enable_gpio))
-		gpio_free(panel->avdd_enable_gpio);
-error_release_avee_enable:
-	if (gpio_is_valid(panel->avee_enable_gpio))
-		gpio_free(panel->avee_enable_gpio);
 error_release_panel_test:
 	if (gpio_is_valid(panel->panel_test_gpio))
 		gpio_free(panel->panel_test_gpio);
-error_release_mode_sel:
+error_release_lcd_mode_sel:
+	if (gpio_is_valid(r_config->lcd_mode_sel_gpio))
+		gpio_free(r_config->lcd_mode_sel_gpio);
+error_release_bl_en:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
 		gpio_free(panel->bl_config.en_gpio);
 error_release_disp_en:
@@ -492,18 +468,6 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	int rc = 0;
 
 	DSI_INFO("(%s)+\n", panel->name);
-
-	if (gpio_is_valid(panel->avdd_enable_gpio)) {
-		rc = gpio_direction_output(panel->avdd_enable_gpio, 1);
-		if (rc)
-			DSI_ERR("unable to set AVDD Enable gpio rc=%d\n", rc);
-	}
-
-	if (gpio_is_valid(panel->avee_enable_gpio)) {
-		rc = gpio_direction_output(panel->avee_enable_gpio, 1);
-		if (rc)
-			DSI_ERR("unable to set AVEE Enable gpio rc=%d\n", rc);
-	}
 
 	if ((panel->tp_state_check_enable) && (panel->tp_state)) {
 		pr_info("%s: (%s)+power is alway on \n", __func__, panel->name);
@@ -1031,7 +995,8 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
 		if (gpio_is_valid(panel->hbm_en_gpio)) {
 			struct panel_param *panel_param = &dsi_panel_param[0][PARAM_HBM_ID];
 
-			panel_param->value = param_info->value;		if (param_info->value) {
+			panel_param->value = param_info->value;
+			if (param_info->value) {
 				gpio_direction_output(panel->hbm_en_gpio, 1);
 				pr_info("Set HBM to (%d) with GPIO%d\n", param_info->value, panel->hbm_en_gpio);
 			}
@@ -2799,20 +2764,6 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 					0);
 	if (!gpio_is_valid(panel->panel_test_gpio))
 		DSI_DEBUG("%s:%d panel test gpio not specified\n", __func__,
-			 __LINE__);
-
-	panel->avee_enable_gpio = utils->get_named_gpio(utils->data,
-					"qcom,avee-enable-gpio",
-					0);
-	if (!gpio_is_valid(panel->avee_enable_gpio))
-		DSI_DEBUG("%s:%d qcom,avee-enable-gpio not specified\n", __func__,
-			 __LINE__);
-
-	panel->avdd_enable_gpio = utils->get_named_gpio(utils->data,
-					"qcom,avdd-enable-gpio",
-					0);
-	if (!gpio_is_valid(panel->avdd_enable_gpio))
-		DSI_DEBUG("%s:%d qcom,add-enable-gpio not specified\n", __func__,
 			 __LINE__);
 
 	panel->hbm_en_gpio = utils->get_named_gpio(utils->data,
