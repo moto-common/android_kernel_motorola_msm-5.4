@@ -28,6 +28,62 @@ config IBIZA_DTB
 		Only include IBIZA specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config CORFUP_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "CORFUP DTBs"
+	help
+		Only include CORFUP specific DTBs to limit the number that
+		get built during kernel compilation.
+
+config CORFUQ_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "CORFUQ DTBs"
+    help
+        Only include CORFUQ specific DTBs to limit the number that
+        get built during kernel compilation.
+
+config CORFUR_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "CORFUR DTBs"
+    help
+        Only include CORFUR specific DTBs to limit the number that
+        get built during kernel compilation.
+
+config CYPFG_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "CYPFG DTBs"
+	help
+		Only include CYPFG specific DTBs to limit the number that
+		get built during kernel compilation.
+
+config CYPFQ_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "CYPFQ DTBs"
+	help
+		Only include CYPFQ specific DTBs to limit the number that
+		get built during kernel compilation.
+
+config CYPFR_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "CYPFR DTBs"
+	help
+		Only include CYPFR specific DTBs to limit the number that
+		get built during kernel compilation.
+
+config MILANF_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "MILANF DTBs"
+	help
+		Only include MILANF specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
