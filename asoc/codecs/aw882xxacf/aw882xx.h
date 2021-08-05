@@ -95,8 +95,13 @@ enum {
 };
 
 enum {
-	AW_FRCPWM_DISABLE = 0,
-	AW_FRCPWM_ENABLE,
+	AW_FRCSET_DISABLE = 0,
+	AW_FRCSET_ENABLE,
+};
+
+enum {
+	AW_BOP_DISABLE = 0,
+	AW_BOP_ENABLE,
 };
 
 enum {
@@ -124,6 +129,7 @@ struct aw882xx {
 	int pstream;
 	int cstream;
 
+	unsigned int fade_flag;
 	unsigned char index;
 	unsigned char phase_sync;	/* phase sync */
 	unsigned char dc_flag;
