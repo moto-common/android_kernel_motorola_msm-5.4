@@ -488,11 +488,13 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto exit;
 	}
 
-	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
-	if (rc) {
-		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
-				panel->name, rc);
-		goto exit;
+	if (!panel->keep_regulators_on) {
+		rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+		if (rc) {
+			DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+					panel->name, rc);
+			goto exit;
+		}
 	}
 
 	rc = dsi_panel_set_pinctrl_state(panel, true);
@@ -504,7 +506,8 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	goto exit;
 
 error_disable_vregs:
-	(void)dsi_pwr_enable_regulator(&panel->power_info, false);
+	if (!panel->keep_regulators_on)
+		(void)dsi_pwr_enable_regulator(&panel->power_info, false);
 
 exit:
 	return rc;
@@ -550,10 +553,12 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		       rc);
 	}
 
-	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
-	if (rc)
-		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
-				panel->name, rc);
+	if (!panel->keep_regulators_on) {
+		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+		if (rc)
+			DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+					panel->name, rc);
+	}
 
 exit:
 	return rc;
@@ -2678,6 +2683,7 @@ static int dsi_panel_parse_power_cfg(struct dsi_panel *panel)
 {
 	int rc = 0;
 	char *supply_name;
+	struct dsi_parser_utils *utils = &panel->utils;
 
 	if (panel->host_config.ext_bridge_mode)
 		return 0;
@@ -2693,6 +2699,12 @@ static int dsi_panel_parse_power_cfg(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed to parse vregs\n", panel->name);
 		goto error;
 	}
+
+	panel->keep_regulators_on = utils->read_bool(utils->data,
+			"qcom,keep-regulators-on");
+
+	DSI_DEBUG("[%s] keep_regulators_on=%d\n", panel->name,
+			panel->keep_regulators_on);
 
 error:
 	return rc;

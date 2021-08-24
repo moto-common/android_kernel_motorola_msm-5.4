@@ -351,6 +351,7 @@ struct dsi_panel {
 
 	int panel_test_gpio;
 	int power_mode;
+	bool keep_regulators_on;
 	enum dsi_panel_physical_type panel_type;
 
 	struct dsi_tlmm_gpio *tlmm_gpio;
