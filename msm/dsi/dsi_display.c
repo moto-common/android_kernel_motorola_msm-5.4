@@ -6406,7 +6406,53 @@ static struct platform_driver dsi_display_driver = {
 		.of_match_table = dsi_display_dt_match,
 		.suppress_bind_attrs = true,
 	},
+	.shutdown = dsi_display_dev_shutdown,
 };
+
+void dsi_display_dev_shutdown(struct platform_device *pdev)
+{
+	int rc = 0;
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+
+	if (!pdev) {
+		DSI_ERR("Invalid device\n");
+		return;
+	}
+
+	display = platform_get_drvdata(pdev);
+
+	if (display == NULL || display->panel == NULL) {
+		DSI_ERR("Invalid device\n");
+		return;
+	}
+
+	panel = display->panel;
+
+	if (!panel->need_execute_shutdown) {
+		return;
+	}
+
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+
+	if (gpio_is_valid(panel->reset_config.reset_gpio))
+		gpio_set_value(panel->reset_config.reset_gpio, 0);
+
+	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
+		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
+
+	if (gpio_is_valid(panel->panel_test_gpio)) {
+		rc = gpio_direction_input(panel->panel_test_gpio);
+		if (rc)
+			DSI_WARN("set dir for panel test gpio failed rc=%d\n", rc);
+	}
+
+	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+	if (rc)
+		DSI_ERR("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+
+}
 
 static int dsi_display_init(struct dsi_display *display)
 {
