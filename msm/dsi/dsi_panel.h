@@ -332,6 +332,7 @@ struct dsi_panel {
 	bool ulps_suspend_enabled;
 	bool allow_phy_power_off;
 	bool reset_gpio_always_on;
+	bool need_execute_shutdown;
 	atomic_t esd_recovery_pending;
 
 	bool is_twm_en;
