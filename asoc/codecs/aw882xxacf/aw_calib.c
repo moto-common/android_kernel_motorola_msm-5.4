@@ -36,8 +36,7 @@ static bool is_single_cali = false; /*if mutli_dev cali false, single dev true*/
 
 static const char *cali_str[CALI_STR_MAX] = {"none", "start_cali", "cali_re",
 	"cali_f0", "store_re", "show_re", "show_r0", "show_cali_f0", "show_f0",
-	"show_te", "show_st", "dev_sel", "get_ver", "get_dev_num",
-	"cali_q_f0", "show_q_f0"
+	"show_te", "show_st", "dev_sel", "get_ver", "get_dev_num"
 };
 
 static char *ch_name[AW_DEV_CH_MAX] = {"pri_l", "pri_r", "sec_l", "sec_r"};
@@ -169,7 +168,7 @@ int aw_cali_read_re_from_nvram(int32_t *cali_re, int32_t channel)
 
 int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
 {
-	int ret = 0;
+	/*int ret = 0;
 
 	if ((re >= aw_dev->re_min) && (re <= aw_dev->re_max)) {
 		aw_dev->cali_desc.cali_re = re;
@@ -179,10 +178,10 @@ int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
 	} else {
 		aw_dev_err(aw_dev->dev, "invalid cali re %d !", re);
 		return -EINVAL;
-	}
+	}*/
 
 	aw_dev_info(aw_dev->dev, "store cali re is %d", re);
-	return ret;
+	return 0;
 }
 
 /*********************************aw_cali_sevice*********************************************************/
@@ -271,8 +270,6 @@ static int aw_cali_svc_dev_get_f0_q(struct aw_device *aw_dev)
 	q[0] = sum_q / AW_CALI_READ_TIMES;
 	aw_dev->cali_desc.cali_f0 = f0[0];
 	aw_dev->cali_desc.cali_q = q[0];
-	aw_dev_dbg(aw_dev->dev, "cali f0 is %d, q is %d",
-			aw_dev->cali_desc.cali_f0, aw_dev->cali_desc.cali_q);
 	return 0;
 }
 
@@ -1805,7 +1802,6 @@ static ssize_t aw_cali_misc_read(struct file *filp, char __user *buf, size_t siz
 	char local_buf[128] = { 0 };
 	unsigned int dev_num;
 	int32_t temp_data[AW_DEV_CH_MAX << 1] = {0};
-	int32_t temp_data1[AW_DEV_CH_MAX << 1] = {0};
 
 	aw_dev_info(aw_dev->dev, "enter");
 
@@ -1920,20 +1916,6 @@ static ssize_t aw_cali_misc_read(struct file *filp, char __user *buf, size_t siz
 		}
 		break;
 	}
-	case CALI_STR_SHOW_F0_Q: {
-		ret = aw_cali_svc_get_devs_cali_f0_q(aw_dev,
-				temp_data, temp_data1, AW_DEV_CH_MAX);
-		if (ret <= 0) {
-			aw_dev_err(aw_dev->dev, "get q f0 failed");
-			return ret;
-		} else {
-			for (i = 0; i < ret; i++)
-				len += snprintf(local_buf+len, sizeof(local_buf)-len,
-						"%s:f0:%d q:%d", ch_name[i], temp_data[i], temp_data1[i]);
-
-			len += snprintf(local_buf+len, sizeof(local_buf) - len, "\n");
-		}
-	} break;
 	default: {
 		if (g_msic_wr_flag == CALI_STR_NONE) {
 			aw_dev_info(aw_dev->dev, "please write cmd first");
@@ -2054,10 +2036,6 @@ static ssize_t aw_cali_misc_write(struct file *filp, const char __user *buf, siz
 	case CALI_STR_DEV_SEL: {
 		ret = aw_cali_misc_switch_dev(filp, aw_dev, kernel_buf);
 	} break;
-	case CALI_STR_CALI_F0_Q: {
-		ret = aw_cali_svc_cali_cmd(aw_dev, AW_CALI_CMD_F0_Q,
-					is_single_cali, CALI_OPS_HMUTE|CALI_OPS_NOISE);
-	} break;
 	case CALI_STR_SHOW_RE:			/*show cali_re*/
 	case CALI_STR_SHOW_R0:			/*show real r0*/
 	case CALI_STR_SHOW_CALI_F0:		/*GET DEV CALI_F0*/
@@ -2065,8 +2043,7 @@ static ssize_t aw_cali_misc_write(struct file *filp, const char __user *buf, siz
 	case CALI_STR_SHOW_TE:
 	case CALI_STR_SHOW_ST:
 	case CALI_STR_VER:
-	case CALI_STR_DEV_NUM:
-	case CALI_STR_SHOW_F0_Q:{
+	case CALI_STR_DEV_NUM: {
 		g_msic_wr_flag = ret;
 		ret = 0;
 	} break;
@@ -2161,8 +2138,6 @@ static void aw_cali_parse_dt(struct aw_device *aw_dev)
 		desc->mode = AW_CALI_MODE_CLASS;
 	else if (!strcmp(cali_mode_str, "aw_attr"))
 		desc->mode = AW_CALI_MODE_ATTR;
-	else if (!strcmp(cali_mode_str, "aw_cali_all"))
-		desc->mode = AW_CALI_MODE_ALL;
 	else
 		desc->mode = AW_CALI_MODE_MISC; /*default misc*/
 
@@ -2210,14 +2185,10 @@ int aw_cali_init(struct aw_cali_desc *cali_desc)
 
 	aw_cali_parse_dt(aw_dev);
 
-	if (cali_desc->mode == AW_CALI_MODE_ATTR) {
+	if (cali_desc->mode == AW_CALI_MODE_ATTR)
 		aw_cali_attr_init(aw_dev);
-	} else if (cali_desc->mode == AW_CALI_MODE_CLASS) {
+	else if (cali_desc->mode == AW_CALI_MODE_CLASS)
 		aw_cali_class_attr_init(aw_dev);
-	} else if (cali_desc->mode == AW_CALI_MODE_ALL) {
-		aw_cali_attr_init(aw_dev);
-		aw_cali_class_attr_init(aw_dev);
-	}
 
 	aw_cali_misc_init(aw_dev);
 
@@ -2231,14 +2202,10 @@ void aw_cali_deinit(struct aw_cali_desc *cali_desc)
 	struct aw_device *aw_dev =
 		container_of(cali_desc, struct aw_device, cali_desc);
 
-	if (cali_desc->mode == AW_CALI_MODE_ATTR) {
+	if (cali_desc->mode == AW_CALI_MODE_ATTR)
 		aw_cali_attr_deinit(aw_dev);
-	} else if (cali_desc->mode == AW_CALI_MODE_CLASS) {
+	else if (cali_desc->mode == AW_CALI_MODE_CLASS)
 		aw_cali_class_attr_deinit(aw_dev);
-	} else if (cali_desc->mode == AW_CALI_MODE_ALL) {
-		aw_cali_attr_deinit(aw_dev);
-		aw_cali_class_attr_deinit(aw_dev);
-	}
 
 	aw_cali_misc_deinit(aw_dev);
 }
