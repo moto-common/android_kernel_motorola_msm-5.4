@@ -25,6 +25,8 @@ static DEFINE_MUTEX(g_aw_dsp_lock);
 #define AW_MSG_ID_F0_Q			(0x00000003)
 #define AW_MSG_ID_DIRECT_CUR_FLAG	(0x00000006)
 #define AW_MSG_ID_SPK_STATUS		(0x00000007)
+#define AW_MSG_ID_SWITCH_SCENE		(0x00000013)
+#define AW_MSG_ID_ALGO_PARAMS_PATH	(0x00000014)
 #define AW_MSG_ID_VERSION		(0x00000008)
 #define AW_MSG_ID_VERSION_NEW		(0x00000012)
 
@@ -45,6 +47,7 @@ static DEFINE_MUTEX(g_aw_dsp_lock);
 #define AW_MSG_ID_F0_R			(0X10013D20)
 #define AW_MSG_ID_REAL_DATA_L		(0X10013D21)
 #define AW_MSG_ID_REAL_DATA_R		(0X10013D22)
+#define AW_MSG_ID_SET_BIN_PARAMS	(0X10013D30)
 
 #define AFE_MSG_ID_MSG_0	(0X10013D2A)
 #define AFE_MSG_ID_MSG_1	(0X10013D2B)
@@ -91,7 +94,6 @@ static uint32_t afe_param_msg_id[MSG_PARAM_ID_MAX] = {
 extern int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size);
 extern int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer, int16_t size, uint32_t *buf_len);
 #elif defined CONFIG_AW882XX_DSP
-//extern int afe_get_topology(int port_id);
 extern int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,uint32_t param_id,
 	void *buf, int cmd_size, bool write);
 extern int aw_send_afe_rx_module_enable(int32_t rx_port_id, void *buf, int size);
@@ -111,24 +113,15 @@ static int aw_send_afe_tx_module_enable(int32_t tx_port_id, void *buf, int size)
 {
 	return 0;
 }
-//static int afe_get_topology(int port_id)
-//{
-	//return 0;
-//}
 
 #endif
 
-/*#ifdef AW_QCOM_PLATFORM
-extern void aw_set_port_id(int tx_port_id, int rx_port_id);
+#ifdef CONFIG_AW882XX_DSP
+extern int aw_adm_param_enable(int port_id, int module_id, int param_id, int enable);
 #else
-static void aw_set_port_id(int tx_port_id, int rx_port_id) {
-	return;
-}
-#endif*/
-
-#if 0
 static int aw_adm_param_enable(int port_id, int module_id, int param_id, int enable)
 {
+#if 0
 	/*for v3*/
 	int copp_idx = 0;
 	uint32_t enable_param;
@@ -165,7 +158,7 @@ static int aw_adm_param_enable(int port_id, int module_id, int param_id, int ena
 		pr_err("%s: Failed to set enable of module(%d) instance(%d) to %d, err %d\n",
 				__func__, module_id, INSTANCE_ID_0, enable, rc);
 	return rc;
-
+#endif
 	return 0;
 }
 #endif
@@ -229,46 +222,21 @@ static int aw_check_dsp_ready(uint32_t param_id)
 static int aw_qcom_write_data_to_dsp(uint32_t param_id, void *data, int size)
 {
 	int ret;
-	//int try = 0;
 
 	mutex_lock(&g_aw_dsp_lock);
-	//while (try < AW_DSP_TRY_TIME) {
-		//if (aw_check_dsp_ready(param_id)) {
 	ret = aw_send_afe_cal_apr(g_rx_port_id, g_tx_port_id, param_id, data, size, true);
 	mutex_unlock(&g_aw_dsp_lock);
 	return ret;
-		//} else {
-		//	try++;
-		//	usleep_range(AW_10000_US, AW_10000_US + 10);
-		//	aw_pr_info("afe topo not ready try again");
-		//}
-	//}
-	//mutex_unlock(&g_aw_dsp_lock);
-
-	//return -EINVAL;
 }
 
 static int aw_qcom_read_data_from_dsp(uint32_t param_id, void *data, int size)
 {
 	int ret;
-	//int try = 0;
 
 	mutex_lock(&g_aw_dsp_lock);
-	//while (try < AW_DSP_TRY_TIME) {
-	//	if (aw_check_dsp_ready(param_id)) {
 	ret = aw_send_afe_cal_apr(g_rx_port_id, g_tx_port_id, param_id, data, size, false);
 	mutex_unlock(&g_aw_dsp_lock);
 	return ret;
-/*		} else {
-			try++;
-			usleep_range(AW_10000_US, AW_10000_US + 10);
-			aw_pr_info("afe topo not ready try again");
-		}
-	}
-	mutex_unlock(&g_aw_dsp_lock);
-
-	return -EINVAL;
-*/
 }
 
 static int aw_qcom_write_msg_to_dsp(int msg_num, uint32_t msg_id, char *data_ptr, unsigned int size)
@@ -385,6 +353,75 @@ static int aw_write_data_to_dsp(uint32_t param_id, void *data, int size)
 }
 
 /************************* dsp communication function *****************************/
+int aw_dsp_set_algo_prof(struct aw_device *aw_dev, int prof_id)
+{
+	int ret;
+	int msg_num;
+	int32_t data = prof_id;
+
+	ret = aw_get_msg_num(aw_dev->channel, &msg_num);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get msg_num failed ");
+		return ret;
+	}
+
+	ret = aw_write_msg_to_dsp(msg_num, AW_MSG_ID_SWITCH_SCENE,
+				(char *)&data, sizeof(int32_t));
+	if (ret < 0) {
+		aw_pr_err("write prof_id failed ");
+		return ret;
+	}
+	aw_pr_dbg("write prof_id done");
+
+	return 0;
+
+}
+
+int aw_dsp_get_algo_prof(struct aw_device *aw_dev, int *prof_id)
+{
+	int ret;
+	int msg_num;
+	int32_t data = 0;
+
+	ret = aw_get_msg_num(aw_dev->channel, &msg_num);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get msg_num failed ");
+		return ret;
+	}
+
+	ret = aw_read_msg_from_dsp(msg_num, AW_MSG_ID_SWITCH_SCENE,
+				(char *)&data, sizeof(int32_t));
+	if (ret < 0) {
+		*prof_id = 0;
+		aw_dev_err(aw_dev->dev, "read algo prof failed");
+		return ret;
+	}
+
+	*prof_id = data;
+	aw_pr_dbg("read prof_id:%d done", *prof_id);
+	return 0;
+}
+
+int aw_dsp_set_algo_params_path(struct aw_device *aw_dev)
+{
+	int ret;
+	int msg_num;
+
+	ret = aw_get_msg_num(aw_dev->channel, &msg_num);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get msg_num failed ");
+		return ret;
+	}
+
+	ret = aw_write_msg_to_dsp(msg_num, AW_MSG_ID_ALGO_PARAMS_PATH,
+				(char *)aw_dev->algo_path,
+				sizeof(aw_dev->algo_path));
+	if (ret)
+		return -EINVAL;
+
+	aw_pr_info("set algo params path: %s", aw_dev->algo_path);
+	return 0;
+}
 int aw_dsp_set_afe_module_en(int type, int enable)
 {
 	int ret;
