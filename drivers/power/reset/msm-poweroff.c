@@ -66,7 +66,7 @@ static void *dload_mode_addr;
 static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
 
-static bool force_warm_reboot;
+static bool force_warm_reboot = 1;
 
 static struct notifier_block restart_nb;
 
@@ -424,7 +424,7 @@ __setup("sys_restart_mode=", set_sys_restart_mode);
 
 static void msm_restart_prepare(const char *cmd)
 {
-	bool need_warm_reset = false;
+	bool need_warm_reset = true;
 	u8 reason = PON_RESTART_REASON_UNKNOWN;
 	/* Write download mode flags if we're panic'ing
 	 * Write download mode flags if restart_mode says so
