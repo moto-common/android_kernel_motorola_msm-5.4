@@ -540,4 +540,6 @@ source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
 source "drivers/misc/pen/Kconfig"
+source "drivers/misc/utag/Kconfig"
+source "drivers/misc/mmi_sys_temp/Kconfig"
 endmenu

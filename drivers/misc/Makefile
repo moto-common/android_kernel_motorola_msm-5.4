@@ -66,3 +66,5 @@ obj-$(CONFIG_PROFILER)			+= profiler.o
 obj-$(CONFIG_WIGIG_SENSING_SPI)	+= wigig_sensing.o
 obj-$(CONFIG_HISI_HIKEY_USB)	+= hisi_hikey_usb.o
 obj-y				+= pen/
+obj-$(CONFIG_MOTO_UTAGS) 	+= utag/
+obj-$(CONFIG_MMI_SYS_TEMP)	+= mmi_sys_temp/
