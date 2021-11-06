@@ -1,0 +1,4 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+
+obj-$(CONFIG_INPUT_CHIPONE_FPS_SPI) += fpsensor_spi_tee.o
