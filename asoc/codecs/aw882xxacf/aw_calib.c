@@ -52,6 +52,24 @@ static DEFINE_MUTEX(g_cali_lock);
 #define AWINIC_CALI_FILE  "/mnt/vendor/persist/factory/audio/aw_cali.bin"
 #define AW_INT_DEC_DIGIT 10
 
+static void aw_fs_read(struct file *file, char *buf, size_t count, loff_t *pos)
+{
+#ifdef AW_KERNEL_VER_OVER_5_4_0
+	kernel_read(file, buf, count, pos);
+#else
+	vfs_read(file, buf, count, pos);
+#endif
+}
+
+static void aw_fs_write(struct file *file, char *buf, size_t count, loff_t *pos)
+{
+#ifdef AW_KERNEL_VER_OVER_5_4_0
+	kernel_write(file, buf, count, pos);
+#else
+	vfs_write(file, buf, count, pos);
+#endif
+}
+
 static int aw_cali_write_cali_re_to_file(int32_t cali_re, int channel)
 {
 	struct file *fp = NULL;
@@ -73,7 +91,7 @@ static int aw_cali_write_cali_re_to_file(int32_t cali_re, int channel)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	kernel_write(fp, buf, strlen(buf), &pos);
+	aw_fs_write(fp, buf, strlen(buf), &pos);
 
 	set_fs(fs);
 
@@ -118,7 +136,7 @@ static int aw_cali_get_read_cali_re(int32_t *cali_re, int channel)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	kernel_read(fp, buf, f_size, &pos);
+	aw_fs_read(fp, buf, f_size, &pos);
 
 	set_fs(fs);
 
@@ -168,7 +186,7 @@ int aw_cali_read_re_from_nvram(int32_t *cali_re, int32_t channel)
 
 int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
 {
-	/*int ret = 0;
+	int ret = 0;
 
 	if ((re >= aw_dev->re_min) && (re <= aw_dev->re_max)) {
 		aw_dev->cali_desc.cali_re = re;
@@ -178,10 +196,10 @@ int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
 	} else {
 		aw_dev_err(aw_dev->dev, "invalid cali re %d !", re);
 		return -EINVAL;
-	}*/
+	}
 
 	aw_dev_info(aw_dev->dev, "store cali re is %d", re);
-	return 0;
+	return ret;
 }
 
 /*********************************aw_cali_sevice*********************************************************/
@@ -2138,6 +2156,8 @@ static void aw_cali_parse_dt(struct aw_device *aw_dev)
 		desc->mode = AW_CALI_MODE_CLASS;
 	else if (!strcmp(cali_mode_str, "aw_attr"))
 		desc->mode = AW_CALI_MODE_ATTR;
+	else if (!strcmp(cali_mode_str, "aw_cali_all"))
+		desc->mode = AW_CALI_MODE_ALL;
 	else
 		desc->mode = AW_CALI_MODE_MISC; /*default misc*/
 
@@ -2185,10 +2205,14 @@ int aw_cali_init(struct aw_cali_desc *cali_desc)
 
 	aw_cali_parse_dt(aw_dev);
 
-	if (cali_desc->mode == AW_CALI_MODE_ATTR)
+	if (cali_desc->mode == AW_CALI_MODE_ATTR) {
 		aw_cali_attr_init(aw_dev);
-	else if (cali_desc->mode == AW_CALI_MODE_CLASS)
+	} else if (cali_desc->mode == AW_CALI_MODE_CLASS) {
 		aw_cali_class_attr_init(aw_dev);
+	} else if (cali_desc->mode == AW_CALI_MODE_ALL) {
+		aw_cali_attr_init(aw_dev);
+		aw_cali_class_attr_init(aw_dev);
+	}
 
 	aw_cali_misc_init(aw_dev);
 
@@ -2202,14 +2226,15 @@ void aw_cali_deinit(struct aw_cali_desc *cali_desc)
 	struct aw_device *aw_dev =
 		container_of(cali_desc, struct aw_device, cali_desc);
 
-	if (cali_desc->mode == AW_CALI_MODE_ATTR)
+	if (cali_desc->mode == AW_CALI_MODE_ATTR) {
 		aw_cali_attr_deinit(aw_dev);
-	else if (cali_desc->mode == AW_CALI_MODE_CLASS)
+	} else if (cali_desc->mode == AW_CALI_MODE_CLASS) {
 		aw_cali_class_attr_deinit(aw_dev);
+	} else if (cali_desc->mode == AW_CALI_MODE_ALL) {
+		aw_cali_attr_deinit(aw_dev);
+		aw_cali_class_attr_deinit(aw_dev);
+	}
 
 	aw_cali_misc_deinit(aw_dev);
 }
 
-#if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
-MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
-#endif

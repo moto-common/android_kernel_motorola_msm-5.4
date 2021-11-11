@@ -94,6 +94,7 @@ static uint32_t afe_param_msg_id[MSG_PARAM_ID_MAX] = {
 extern int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size);
 extern int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer, int16_t size, uint32_t *buf_len);
 #elif defined CONFIG_AW882XX_DSP
+//extern int afe_get_topology(int port_id);
 extern int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,uint32_t param_id,
 	void *buf, int cmd_size, bool write);
 extern int aw_send_afe_rx_module_enable(int32_t rx_port_id, void *buf, int size);
@@ -113,15 +114,24 @@ static int aw_send_afe_tx_module_enable(int32_t tx_port_id, void *buf, int size)
 {
 	return 0;
 }
+//static int afe_get_topology(int port_id)
+//{
+	//return 0;
+//}
 
 #endif
 
-#ifdef CONFIG_AW882XX_DSP
-extern int aw_adm_param_enable(int port_id, int module_id, int param_id, int enable);
+/*#ifdef AW_QCOM_PLATFORM
+extern void aw_set_port_id(int tx_port_id, int rx_port_id);
 #else
+static void aw_set_port_id(int tx_port_id, int rx_port_id) {
+	return;
+}
+#endif*/
+
+#if 0
 static int aw_adm_param_enable(int port_id, int module_id, int param_id, int enable)
 {
-#if 0
 	/*for v3*/
 	int copp_idx = 0;
 	uint32_t enable_param;
@@ -158,7 +168,7 @@ static int aw_adm_param_enable(int port_id, int module_id, int param_id, int ena
 		pr_err("%s: Failed to set enable of module(%d) instance(%d) to %d, err %d\n",
 				__func__, module_id, INSTANCE_ID_0, enable, rc);
 	return rc;
-#endif
+
 	return 0;
 }
 #endif
@@ -222,21 +232,46 @@ static int aw_check_dsp_ready(uint32_t param_id)
 static int aw_qcom_write_data_to_dsp(uint32_t param_id, void *data, int size)
 {
 	int ret;
+	//int try = 0;
 
 	mutex_lock(&g_aw_dsp_lock);
+	//while (try < AW_DSP_TRY_TIME) {
+		//if (aw_check_dsp_ready(param_id)) {
 	ret = aw_send_afe_cal_apr(g_rx_port_id, g_tx_port_id, param_id, data, size, true);
 	mutex_unlock(&g_aw_dsp_lock);
 	return ret;
+		//} else {
+		//	try++;
+		//	usleep_range(AW_10000_US, AW_10000_US + 10);
+		//	aw_pr_info("afe topo not ready try again");
+		//}
+	//}
+	//mutex_unlock(&g_aw_dsp_lock);
+
+	//return -EINVAL;
 }
 
 static int aw_qcom_read_data_from_dsp(uint32_t param_id, void *data, int size)
 {
 	int ret;
+	//int try = 0;
 
 	mutex_lock(&g_aw_dsp_lock);
+	//while (try < AW_DSP_TRY_TIME) {
+	//	if (aw_check_dsp_ready(param_id)) {
 	ret = aw_send_afe_cal_apr(g_rx_port_id, g_tx_port_id, param_id, data, size, false);
 	mutex_unlock(&g_aw_dsp_lock);
 	return ret;
+/*		} else {
+			try++;
+			usleep_range(AW_10000_US, AW_10000_US + 10);
+			aw_pr_info("afe topo not ready try again");
+		}
+	}
+	mutex_unlock(&g_aw_dsp_lock);
+
+	return -EINVAL;
+*/
 }
 
 static int aw_qcom_write_msg_to_dsp(int msg_num, uint32_t msg_id, char *data_ptr, unsigned int size)
@@ -353,6 +388,7 @@ static int aw_write_data_to_dsp(uint32_t param_id, void *data, int size)
 }
 
 /************************* dsp communication function *****************************/
+
 int aw_dsp_set_algo_prof(struct aw_device *aw_dev, int prof_id)
 {
 	int ret;
@@ -422,6 +458,7 @@ int aw_dsp_set_algo_params_path(struct aw_device *aw_dev)
 	aw_pr_info("set algo params path: %s", aw_dev->algo_path);
 	return 0;
 }
+
 int aw_dsp_set_afe_module_en(int type, int enable)
 {
 	int ret;
