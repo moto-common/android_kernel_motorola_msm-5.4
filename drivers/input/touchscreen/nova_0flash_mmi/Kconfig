@@ -1,0 +1,73 @@
+#
+# Novatek NT36xxx touchscreen driver configuration
+#
+config TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+	tristate "Moto Novatek NT36xxx host download SPI driver"
+	default n
+	help
+	  Say Y here if you have a Moto Novatek NT36xxx no flash touchscreen connected
+	  to your system by SPI bus.
+
+	  If unsure, say N.
+
+config INPUT_NOVA_0FLASH_MMI_ENABLE_DOUBLE_TAP
+	bool "Moto Novatek NT36xxx Double tap"
+	depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+	default n
+	help
+	  Say Y here if you want to have Double tap support on Moto Novatek NT36xxx.
+
+	  If unsure, say N.
+
+config INPUT_NOVA_PANEL_NOTIFICATIONS
+	bool "Moto Novatek NT36xxx panel notification"
+	depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+	default n
+	help
+	  Say Y here if you want to have panel notification support on Moto Novatek NT36xxx.
+
+	  If unsure, say N.
+
+config NOVA_ESD_ENABLE
+        bool "Moto Novatek NT36xxx ESD Detection"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+        help
+          Say Y here if you want to have ESD Detection support on Moto Novatek NT36xxx.
+
+          If unsure, say N.
+
+config INPUT_NOVA_0FLASH_MMI_NOTIFY_TOUCH_STATE
+        bool "Moto Novatek NT36xxx Notify Touch State"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config INPUT_NOVA_CHIP_VER_1
+        bool "Moto Novatek NT36xxx Chip Ver 1"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config NOVA_LCM_FAST_LIGHTUP
+        bool "Moto Novatek NT36xxx LCM Fast lightup"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config INPUT_NOVA_0FLASH_MMI_STYLUS_PALM
+        bool "Moto Novatek NT36xxx Stylus palm"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config INPUT_NOVA_0FLASH_MMI_STYLUS_PALM_RANGE
+        bool "Moto Novatek NT36xxx Stylus palm range"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config INPUT_NOVA_0FLASH_MMI_PEN_NOTIFIER
+        bool "Moto Novatek NT36xxx Stylus pen notifier"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
+
+config INPUT_NOVA_EDGE_SUPPRESSION
+        bool "Moto Novatek NT36xxx Stylus edge suppression"
+        depends on TOUCHSCREEN_NT36xxx_HOSTDL_SPI_MMI
+        default n
