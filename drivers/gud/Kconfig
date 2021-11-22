@@ -1,0 +1,17 @@
+#
+# Trustonic drivers configuration
+#
+
+config TRUSTONIC_TEE
+    tristate "Trustonic TEE Driver"
+    depends on ARM64
+    default n
+    ---help---
+      Enable Trustonic TEE support
+
+config RSU_SELECT_INTERNAL_CLOCK
+    bool "Use internal clock for qcom_seecom"
+    depends on TRUSTONIC_TEE
+    default n
+    ---help---
+      Set for platforms that use internal clock for qcom_seecom
