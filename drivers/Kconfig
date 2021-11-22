@@ -240,4 +240,6 @@ source "drivers/mmi_relay/Kconfig"
 
 source "drivers/sensors/Kconfig"
 
+source "drivers/gud/Kconfig"
+
 endmenu
