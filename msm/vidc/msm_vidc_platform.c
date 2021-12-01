@@ -2070,7 +2070,7 @@ static struct msm_vidc_common_data holi_common_data[] = {
 	},
 	{
 		.key = "qcom,max-hw-load",
-		.value = 489600, /* ((1088x1920)/256)@60fps */
+		.value = 734400, /* ((1088x1920)/256)@90fps */  // Motorola chenmf5, IKSWS-28942 extend from 489600 to 734400
 	},
 	{
 		.key = "qcom,max-image-load",
