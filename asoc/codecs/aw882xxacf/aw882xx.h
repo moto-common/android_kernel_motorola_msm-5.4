@@ -49,6 +49,29 @@ enum aw882xx_int_type {
 	INT_TYPE_OTHI = 0x8,
 };
 
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
+enum {
+	AW_ALGO_PROFILE_ID_0 = 0,
+	AW_ALGO_PROFILE_ID_1,
+	AW_ALGO_PROFILE_ID_2,
+	AW_ALGO_PROFILE_ID_3,
+	AW_ALGO_PROFILE_ID_4,
+	AW_ALGO_PROFILE_ID_5,
+	AW_ALGO_PROFILE_ID_6,
+	AW_ALGO_PROFILE_ID_MAX,
+};
+
+struct aw882xx_scene_info {
+	int id;
+	char name[20];
+	int priority;
+	int skt_profile_id;
+	int is_active;
+	int active_cnt;
+};
+#endif
+
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 1)
 #define AW_KERNEL_VER_OVER_4_19_1
 #endif
@@ -111,6 +134,49 @@ enum {
 };
 
 enum {
+	AW882XX_RAMP_OFF = 0,
+	AW882XX_RAMP_ON,
+};
+
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
+enum {
+	AW_ALGO_CALI_OFF = 0,
+	AW_ALGO_CALI_ON,
+};
+
+enum {
+	AW_ALGO_BYPASS_OFF = 0,
+	AW_ALGO_BYPASS_ON,
+};
+
+enum {
+	AW_ALGO_HANDSET_OFF = 0,
+	AW_ALGO_HANDSET_ON,
+};
+
+enum {
+	AW_ALGO_VOICE_OFF = 0,
+	AW_ALGO_VOICE_ON,
+};
+
+enum {
+	AW_ALGO_VOIP_OFF = 0,
+	AW_ALGO_VOIP_ON,
+};
+
+enum {
+	AW_ALGO_MUSIC_DEEPBUFFER_OFF = 0,
+	AW_ALGO_MUSIC_DEEPBUFFER_ON,
+};
+
+enum {
+	AW_ALGO_MUSIC_FASTTRACK_OFF = 0,
+	AW_ALGO_MUSIC_FASTTRACK_ON,
+};
+#endif
+
+
+enum {
 	AWRW_HDR_WR_FLAG = 0,
 	AWRW_HDR_ADDR_BYTES,
 	AWRW_HDR_DATA_BYTES,
@@ -134,6 +200,19 @@ struct aw882xx {
 	int rate;
 	int pstream;
 	int cstream;
+	int aw882xx_ramp_status;    /* ramp status */
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
+	int aw882xx_algo_cali;
+	int aw882xx_algo_bypass;
+	int aw882xx_algo_handset;
+	int aw882xx_algo_voice;
+	int aw882xx_algo_voip;
+	int aw882xx_algo_music_deepbuffer;
+	int aw882xx_algo_music_fasttrack;
+	int aw882xx_algo_prof_id;
+	int cur_algo_prof_id;
+#endif
+
 
 	unsigned int fade_flag;
 	unsigned char index;

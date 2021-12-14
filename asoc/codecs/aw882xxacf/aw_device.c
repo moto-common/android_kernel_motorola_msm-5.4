@@ -41,6 +41,7 @@ static char *profile_name[AW_PROFILE_MAX] = {
 static char ext_dsp_prof_write = AW_EXT_DSP_WRITE_NONE;
 static DEFINE_MUTEX(g_ext_dsp_prof_wr_lock); /*lock ext wr flag*/
 static unsigned int g_fade_in_time = AW_1000_US / 10;
+
 static unsigned int g_fade_out_time = AW_1000_US >> 1;
 static LIST_HEAD(g_dev_list);
 static DEFINE_MUTEX(g_dev_lock);
@@ -763,7 +764,7 @@ static void aw_dev_amppd(struct aw_device *aw_dev, bool amppd)
 static void aw_dev_mute(struct aw_device *aw_dev, bool mute)
 {
 	struct aw_mute_desc *mute_desc = &aw_dev->mute_desc;
-
+	struct aw882xx *aw882xx = (struct aw882xx *)aw_dev->private_data;
 	aw_dev_dbg(aw_dev->dev, "enter");
 
 	if (mute) {
@@ -772,10 +773,18 @@ static void aw_dev_mute(struct aw_device *aw_dev, bool mute)
 				mute_desc->mask,
 				mute_desc->enable);
 	} else {
-		aw_dev->ops.aw_i2c_write_bits(aw_dev, mute_desc->reg,
-				mute_desc->mask,
-				mute_desc->disable);
-		aw_dev_fade_in(aw_dev);
+		if (aw882xx->aw882xx_ramp_status == AW882XX_RAMP_ON) {
+			aw_dev->ops.aw_i2c_write_bits(aw_dev, mute_desc->reg,
+					mute_desc->mask,
+					mute_desc->disable);
+			aw_dev_fade_in(aw_dev);
+		} else if (aw882xx->aw882xx_ramp_status == AW882XX_RAMP_OFF) {
+			g_fade_in_time = AW_1000_US / 10;
+			aw_dev->ops.aw_i2c_write_bits(aw_dev, mute_desc->reg,
+					mute_desc->mask,
+					mute_desc->disable);
+			aw_dev_fade_in(aw_dev);
+		}
 	}
 	aw_dev_info(aw_dev->dev, "done");
 }

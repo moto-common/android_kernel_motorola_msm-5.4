@@ -9,6 +9,9 @@ ifeq ($(CONFIG_AW882XX_STEREO_SMARTPA), y)
     EXTRA_CFLAGS += -DCONFIG_AW882XX_STEREO_SMARTPA
 endif
 
+ifeq ($(CONFIG_AW882XX_PARAMS_FROM_BIN), y)
+    EXTRA_CFLAGS += -DCONFIG_AW882XX_ALGO_BIN_PARAMS
+endif
 
 aw882xx_acf-objs += aw882xx.o
 aw882xx_acf-objs += aw_bin_parse.o
