@@ -31,6 +31,13 @@ enum {
 #define AW_DSP_MSG_HDR_VER (1)
 typedef struct aw_msg_hdr aw_dsp_msg_t;
 
+#ifdef AW_SPIN_ENABLE
+struct aw_spin_param {
+	uint32_t enable;
+	uint32_t relase_time;
+};
+#endif
+
 int aw_dsp_write_msg(struct aw_device *aw_dev, uint32_t msg_id, char *data_ptr, unsigned int data_size);
 int aw_dsp_read_msg(struct aw_device *aw_dev, uint32_t msg_id, char *data_ptr, unsigned int data_size);
 int aw_dsp_write_cali_cfg(struct aw_device *aw_dev, char *data, unsigned int data_len);
@@ -61,6 +68,9 @@ int aw_dsp_get_algo_prof(struct aw_device *aw_dev, int *prof_id);
 int aw_dsp_set_algo_params_path(struct aw_device *aw_dev);
 void aw_device_parse_topo_id_dt(struct aw_device *aw_dev);
 void aw_device_parse_port_id_dt(struct aw_device *aw_dev);
-
+#ifdef AW_SPIN_ENABLE
+int aw_dsp_set_spin_param(struct aw_device *aw_dev,
+				uint32_t enable, uint32_t relase_time);
+#endif
 #endif
 
