@@ -185,6 +185,12 @@ static void dsi_phy_hw_v3_0_lane_settings(struct dsi_phy_hw *phy,
 		DSI_W32(phy, DSIPHY_LNX_LPRX_CTRL(i), 0);
 		DSI_W32(phy, DSIPHY_LNX_PIN_SWAP(i), 0x0);
 		DSI_W32(phy, DSIPHY_LNX_HSTX_STR_CTRL(i), 0x88);
+		if(cfg->phy_drive_strength) {
+			DSI_W32(phy, DSIPHY_LNX_HSTX_STR_CTRL(i), cfg->phy_drive_strength);
+			DSI_PHY_WARN(phy, "DSIPHY_LNX_HSTX_STR_CTRL of lane%d is rewrite to 0x%x from 0x88\n",
+				i, cfg->phy_drive_strength);
+		}
+
 	}
 	dsi_phy_hw_v3_0_config_lpcdrx(phy, cfg, true);
 
