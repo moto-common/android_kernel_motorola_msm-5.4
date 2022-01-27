@@ -6182,6 +6182,42 @@ static const struct of_device_id holi_asoc_machine_of_match[]  = {
 	{},
 };
 
+#ifdef CONFIG_AW882XX_STEREO_SMARTPA
+struct snd_soc_dai_link_component aw_codecs[4];
+static unsigned int aw_codecs_num;
+
+void awinic_set_dai_name(const char* drvdainame, const char*drvname)
+{
+	if (aw_codecs_num < ARRAY_SIZE(aw_codecs)) {
+		aw_codecs[aw_codecs_num].dai_name = drvdainame;
+		aw_codecs[aw_codecs_num].name = drvname;
+		aw_codecs[aw_codecs_num].of_node = NULL;
+		aw_codecs_num++;
+	}
+}
+EXPORT_SYMBOL(awinic_set_dai_name);
+
+static int aw_update_dai_link_name(struct snd_soc_dai_link *dailink, int len1)
+{
+	int i;
+
+	if (aw_codecs_num != 0) {
+		for (i = 0; i < len1; i++) {
+			if((!strcmp(dailink[i].stream_name, "Secondary MI2S Playback")) ||
+				(!strcmp(dailink[i].stream_name, "Secondary MI2S Capture"))){
+				dailink[i].num_codecs = aw_codecs_num;
+				dailink[i].codecs = aw_codecs;
+			}
+		}
+	} else {
+		pr_err("aw_codecs is empty\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+#endif
+
+
 static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 	struct snd_soc_card *card = NULL;
@@ -6312,6 +6348,10 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		dailink = msm_stub_dai_links;
 		total_links = len_2;
 	}
+
+#ifdef CONFIG_AW882XX_STEREO_SMARTPA
+	aw_update_dai_link_name(dailink, total_links);
+#endif
 
 	if (card) {
 		card->dai_link = dailink;
