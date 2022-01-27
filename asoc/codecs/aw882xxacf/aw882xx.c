@@ -2054,7 +2054,7 @@ static void aw882xx_add_codec_controls(struct aw882xx *aw882xx)
 				&aw882xx_controls[0], ARRAY_SIZE(aw882xx_controls));
 }
 
-
+#ifdef CONFIG_AW882XX_STEREO_SMARTPA
 static int aw882xx_name_append_suffix(struct aw882xx *aw882xx, const char **name)
 {
 	char buf[50];
@@ -2069,7 +2069,7 @@ static int aw882xx_name_append_suffix(struct aw882xx *aw882xx, const char **name
 	aw_dev_info(aw882xx->dev, "name is %s", (*name));
 	return 0;
 }
-
+#endif
 
 #ifdef AW_MTK_PLATFORM_WITH_DSP
 
