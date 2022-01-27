@@ -2054,14 +2054,14 @@ static void aw882xx_add_codec_controls(struct aw882xx *aw882xx)
 				&aw882xx_controls[0], ARRAY_SIZE(aw882xx_controls));
 }
 
-#ifdef AW_MTK_PLATFORM_WITH_DSP
+
 static int aw882xx_name_append_suffix(struct aw882xx *aw882xx, const char **name)
 {
 	char buf[50];
 	int i2cbus = aw882xx->i2c->adapter->nr;
 	int i2caddr = aw882xx->i2c->addr;
 
-	snprintf(buf, 50, "%s-%x-%x", *name, i2cbus, i2caddr);
+	snprintf(buf, 50, "%s.%x-00%x", *name, i2cbus, i2caddr);
 	(*name) = aw882xx_devm_kstrdup(aw882xx->dev, buf);
 	if (!(*name))
 		return -ENOMEM;
@@ -2069,6 +2069,9 @@ static int aw882xx_name_append_suffix(struct aw882xx *aw882xx, const char **name
 	aw_dev_info(aw882xx->dev, "name is %s", (*name));
 	return 0;
 }
+
+
+#ifdef AW_MTK_PLATFORM_WITH_DSP
 
 static const struct snd_soc_dapm_widget aw882xx_dapm_widgets[] = {
 	/* playback */
@@ -2311,10 +2314,14 @@ static struct snd_soc_codec_driver soc_codec_dev_aw882xx = {
 };
 #endif
 
+void awinic_set_dai_name(const char* drvdainame, const char*drvname);
+
 int aw_componet_codec_register(struct aw882xx *aw882xx)
 {
 	struct snd_soc_dai_driver *dai_drv;
 	int ret;
+	char *aw882xxdrvname = AW882XX_I2C_NAME;
+
 	dai_drv = devm_kzalloc(aw882xx->dev, sizeof(aw882xx_dai), GFP_KERNEL);
 	if (dai_drv == NULL) {
 		aw_dev_err(aw882xx->dev, "dai_driver malloc failed");
@@ -2325,6 +2332,11 @@ int aw_componet_codec_register(struct aw882xx *aw882xx)
 
 #ifdef CONFIG_AW882XX_STEREO_SMARTPA
 	aw882xx_dai_drv_append_suffix(aw882xx, dai_drv, ARRAY_SIZE(aw882xx_dai));
+	//change dai name  //
+	aw882xx_name_append_suffix(aw882xx, (const char**)&aw882xxdrvname);
+	awinic_set_dai_name(dai_drv->name, aw882xxdrvname);
+	aw_dev_err(aw882xx->dev, "dai name %s codec name %s", dai_drv->name,aw882xxdrvname);
+	//change dai name  end//
 #endif
 
 	ret = aw882xx->codec_ops->register_codec(aw882xx->dev,
@@ -2334,6 +2346,7 @@ int aw_componet_codec_register(struct aw882xx *aw882xx)
 		aw_dev_err(aw882xx->dev, "failed to register aw882xx: %d", ret);
 		return -EINVAL;
 	}
+
 	return 0;
 }
 /*****************************************************
