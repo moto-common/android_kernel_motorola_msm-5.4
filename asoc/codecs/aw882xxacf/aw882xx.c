@@ -2314,13 +2314,17 @@ static struct snd_soc_codec_driver soc_codec_dev_aw882xx = {
 };
 #endif
 
+#ifdef CONFIG_AW882XX_STEREO_SMARTPA
 void awinic_set_dai_name(const char* drvdainame, const char*drvname);
+#endif
 
 int aw_componet_codec_register(struct aw882xx *aw882xx)
 {
 	struct snd_soc_dai_driver *dai_drv;
 	int ret;
+#ifdef CONFIG_AW882XX_STEREO_SMARTPA
 	char *aw882xxdrvname = AW882XX_I2C_NAME;
+#endif
 
 	dai_drv = devm_kzalloc(aw882xx->dev, sizeof(aw882xx_dai), GFP_KERNEL);
 	if (dai_drv == NULL) {
