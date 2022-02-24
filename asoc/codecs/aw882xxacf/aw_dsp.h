@@ -71,6 +71,8 @@ void aw_device_parse_port_id_dt(struct aw_device *aw_dev);
 #ifdef AW_SPIN_ENABLE
 int aw_dsp_set_spin_param(struct aw_device *aw_dev,
 				uint32_t enable, uint32_t relase_time);
+int aw_dsp_get_spin_param(struct aw_device *aw_dev,
+                                uint32_t *enable, uint32_t *relase_time);
 #endif
 #endif
 
