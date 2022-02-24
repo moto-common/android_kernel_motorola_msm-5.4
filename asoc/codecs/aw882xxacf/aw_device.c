@@ -1500,7 +1500,7 @@ int aw_dev_set_spin_param(struct aw_device *aw_dev, uint32_t enable, uint32_t re
 	return aw_dsp_set_spin_param(aw_dev, enable, relase_time);
 }
 
-int aw_dev_get_spin_param(struct aw_device *aw_dev, uint32_t enable, uint32_t relase_time)
+int aw_dev_get_spin_param(struct aw_device *aw_dev, uint32_t *enable, uint32_t *relase_time)
 {
 	return aw_dsp_get_spin_param(aw_dev, enable, relase_time);
 }
