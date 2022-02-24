@@ -1314,7 +1314,7 @@ static int aw882xx_get_spin_status(struct snd_kcontrol *kcontrol,
 	aw_dev = aw882xx->aw_pa;
 
 	if (aw882xx->pstream) {
-		ret = aw_dev_get_spin_param(aw_dev, &ctrl_value, spin_param->relase_time);
+		ret = aw_dev_get_spin_param(aw_dev, &ctrl_value, &(spin_param.relase_time));
 		if (ret) {
 			aw_dev_err(aw882xx->dev, "get spin status failed!, ret = %d", ret);
 			ctrl_value = 0;
@@ -1347,8 +1347,8 @@ static int aw882xx_set_spin_status(struct snd_kcontrol *kcontrol,
 
 	ctrl_value = ucontrol->value.integer.value[0];
 
-	if ((aw882xx->pstream) && (g_algo_rx_en == true) ) {
-		ret = aw_dev_set_spin_param(aw_dev, ctrl_value, spin_param->relase_time);
+	if (g_algo_rx_en == true) {
+		ret = aw_dev_set_spin_param(aw_dev, ctrl_value, spin_param.relase_time);
 		if (ret)
 			aw_dev_err(aw882xx->dev, "set spin status error, ret=%d", ret);
 
@@ -1375,7 +1375,7 @@ static int aw882xx_get_spin_relase_time(struct snd_kcontrol *kcontrol,
 	aw_dev = aw882xx->aw_pa;
 
 	if (aw882xx->pstream) {
-		ret = aw_dev_get_spin_param(aw_dev, spin_param->enable, &ctrl_value);
+		ret = aw_dev_get_spin_param(aw_dev, &(spin_param.enable), &ctrl_value);
 		if (ret) {
 			aw_dev_err(aw882xx->dev, "get spin release time failed!, ret = %d", ret);
 			ctrl_value = 0;
@@ -1399,7 +1399,7 @@ static int aw882xx_set_spin_relase_time(struct snd_kcontrol *kcontrol,
 		aw_componet_codec_ops.kcontrol_codec(kcontrol);
 	struct aw882xx *aw882xx =
 		aw_componet_codec_ops.codec_get_drvdata(codec);
-	struct aw_spin_param spin_param;
+	//struct aw_spin_param spin_param;
 
 	aw_dev_dbg(aw882xx->dev, "ucontrol->value.integer.value[0]=%ld",
 			ucontrol->value.integer.value[0]);
@@ -1407,7 +1407,8 @@ static int aw882xx_set_spin_relase_time(struct snd_kcontrol *kcontrol,
 	aw_dev = aw882xx->aw_pa;
 
 	ctrl_value = ucontrol->value.integer.value[0];
-	if ((aw882xx->pstream) && (g_spin_en == 1) && (g_algo_rx_en == true)) {
+	//if ((aw882xx->pstream) && (g_spin_en == 1) && (g_algo_rx_en == true)) {
+	if ( (g_spin_en == 1) && (g_algo_rx_en == true)) {
 		ret = aw_dev_set_spin_param(aw_dev, g_spin_en , ctrl_value);
 		if (ret)
 			aw_dev_err(aw882xx->dev, "set spin release time error, ret=%d", ret);
@@ -1683,8 +1684,6 @@ static int aw882xx_update_algo_profile(struct aw882xx *aw882xx)
 
 	aw_dev_info(aw882xx->dev, "enter");
 
-	aw_dev = aw882xx->aw_pa;
-
 	new_skt_prof_id = aw882xx_get_algo_prof_id_by_scene_st(aw882xx);
 	if (new_skt_prof_id < AW_ALGO_PROFILE_ID_1) {
 		/* no active scene */
@@ -1695,6 +1694,7 @@ static int aw882xx_update_algo_profile(struct aw882xx *aw882xx)
 	aw_dev_info(aw882xx->dev, "algo scene switch. [new] %d,[old] %d",
 			new_skt_prof_id, cur_skt_prof_id);
 	aw882xx->cur_algo_prof_id = new_skt_prof_id;
+	aw_dev = aw882xx->aw_pa;
 
 	/* set new scene pramas to skt */
 	ret = aw_dev_set_algo_prof(aw_dev, aw882xx->cur_algo_prof_id);
@@ -2011,7 +2011,7 @@ static struct snd_kcontrol_new aw882xx_controls[] = {
 		aw882xx_get_spin, aw882xx_set_spin),
 	SOC_ENUM_EXT("aw882xx_spin_status", aw882xx_snd_enum[1],
 		aw882xx_get_spin_status, aw882xx_set_spin_status),
-	SOC_ENUM_EXT("aw882xx_spin_relase_time", 0, 0, 1000000, 0,
+	SOC_SINGLE_EXT("aw882xx_spin_relase_time", 0, 0, 1000000, 0,
 		aw882xx_get_spin_relase_time, aw882xx_set_spin_relase_time),
 #endif
 #ifdef AW882XX_RUNIN_TEST
