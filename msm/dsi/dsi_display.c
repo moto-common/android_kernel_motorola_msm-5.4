@@ -9190,11 +9190,13 @@ int dsi_display_enable(struct dsi_display *display)
 	if ((mode->priv_info->dsc_enabled ||
 			mode->priv_info->vdc_enabled) &&
 		!(mode->dsi_mode_flags & DSI_MODE_FLAG_DMS_FPS)) {
-		rc = dsi_panel_update_pps(display->panel);
-		if (rc) {
-			DSI_ERR("[%s] panel pps cmd update failed, rc=%d\n",
-				display->name, rc);
-			goto error;
+		if(!mode->priv_info->panel_dsc_update_pps_disable){
+		  	rc = dsi_panel_update_pps(display->panel);
+		  	if (rc) {
+				DSI_ERR("[%s] panel pps cmd update failed, rc=%d\n",
+					display->name, rc);
+				goto error;
+			}
 		}
 	}
 

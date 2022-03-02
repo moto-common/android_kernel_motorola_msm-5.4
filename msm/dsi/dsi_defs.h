@@ -665,6 +665,7 @@ struct dsi_display_mode_priv_info {
 	struct msm_display_dsc_info dsc;
 	struct msm_display_vdc_info vdc;
 	bool dsc_enabled;
+	bool panel_dsc_update_pps_disable;
 	bool vdc_enabled;
 	struct msm_ratio pclk_scale;
 	struct msm_roi_caps roi_caps;

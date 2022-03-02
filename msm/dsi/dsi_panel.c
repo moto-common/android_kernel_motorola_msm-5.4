@@ -3277,6 +3277,7 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 	priv_info = mode->priv_info;
 
 	priv_info->dsc_enabled = false;
+	priv_info->panel_dsc_update_pps_disable = false;
 	compression = utils->get_property(utils->data,
 			"qcom,compression-mode", NULL);
 	if (compression && !strcmp(compression, "dsc"))
@@ -3287,6 +3288,8 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 		return 0;
 	}
 
+	priv_info->panel_dsc_update_pps_disable = utils->read_bool(utils->data,
+                                "qcom,mdss-dsc-update-pps-disable");
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsc-version", &data);
 	if (rc) {
 		priv_info->dsc.config.dsc_version_major = 0x1;
