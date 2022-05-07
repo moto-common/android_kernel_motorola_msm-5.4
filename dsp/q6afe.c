@@ -3929,7 +3929,11 @@ int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
 
 	if (aw_cal->map_data.dma_buf == 0) {
 		/*Minimal chunk size is 8K*/
+#ifdef CONFIG_AW882XX_MAPSIZE_16K
+		aw_cal->map_data.map_size = SZ_16K;
+#else
 		aw_cal->map_data.map_size = SZ_8K;
+#endif
 		result = msm_audio_ion_alloc(&(aw_cal->map_data.dma_buf),
 				aw_cal->map_data.map_size,
 				&(aw_cal->cal_data.paddr),&len,
@@ -3955,8 +3959,11 @@ int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
 		pr_err("%s: Invalid AFE port = 0x%x\n", __func__, port_id);
 		goto err;
 	}
-
+#ifdef CONFIG_AW882XX_MAPSIZE_16K
+	if (cmd_size > (SZ_16K - sizeof(struct param_hdr_v3))) {
+#else
 	if (cmd_size > (SZ_8K - sizeof(struct param_hdr_v3))) {
+#endif
 		pr_err("%s: Invalid payload size = %d\n", __func__, cmd_size);
 		result = -EINVAL;
 		goto err;
