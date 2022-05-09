@@ -576,6 +576,7 @@ static char const *bt_sample_rate_tx_text[] = {"KHZ_8", "KHZ_16",
 					"KHZ_44P1", "KHZ_48",
 					"KHZ_88P2", "KHZ_96"};
 static const char *const afe_loopback_tx_ch_text[] = {"One", "Two"};
+static const char *const earpiece_dsense_text[] = {"On", "Off"};
 
 static SOC_ENUM_SINGLE_EXT_DECL(usb_rx_sample_rate, usb_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(usb_tx_sample_rate, usb_sample_rate_text);
@@ -710,6 +711,7 @@ static SOC_ENUM_SINGLE_EXT_DECL(bt_sample_rate, bt_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(bt_sample_rate_rx, bt_sample_rate_rx_text);
 static SOC_ENUM_SINGLE_EXT_DECL(bt_sample_rate_tx, bt_sample_rate_tx_text);
 static SOC_ENUM_SINGLE_EXT_DECL(afe_loopback_tx_chs, afe_loopback_tx_ch_text);
+static SOC_ENUM_SINGLE_EXT_DECL(earpiece_dsense_en, earpiece_dsense_text);
 
 static bool is_initial_boot;
 static bool codec_reg_done;
@@ -717,6 +719,8 @@ static struct snd_soc_card snd_soc_card_holi_msm;
 static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
 static int dmic_4_5_gpio_cnt;
+static int earpiece_dsense_en_gpio;
+static bool is_earpiece_dsense_disable;
 
 static void *def_wcd_mbhc_cal(void);
 
@@ -3219,6 +3223,36 @@ static int msm_bt_sample_rate_tx_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* when gpio output is high, means earpiece dsense is off */
+static int earpiece_dsense_en_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = is_earpiece_dsense_disable;
+	pr_debug("get earpiece_dsense_pin state: %s\n",
+		 is_earpiece_dsense_disable ? "high" : "low");
+	return 0;
+}
+
+static int earpiece_dsense_en_put(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		gpio_direction_output(earpiece_dsense_en_gpio, 0);
+		is_earpiece_dsense_disable = 0;
+		break;
+	case 1:
+		gpio_direction_output(earpiece_dsense_en_gpio, 1);
+		is_earpiece_dsense_disable = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+	pr_debug("set earpiece_dsense_pin: %s\n",
+		 ucontrol->value.integer.value[0] ? "high" : "low");
+	return 0;
+}
+
 static const struct snd_kcontrol_new msm_int_wcd937x_snd_controls[] = {
 	SOC_ENUM_EXT("RX_CDC_DMA_RX_0 Format", rx_cdc_dma_rx_0_format,
 			cdc_dma_rx_format_get, cdc_dma_rx_format_put),
@@ -3593,6 +3627,8 @@ static const struct snd_kcontrol_new msm_common_snd_controls[] = {
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 	SOC_SINGLE_MULTI_EXT("TDM Slot Map", SND_SOC_NOPM, 0, 255, 0,
 			TDM_MAX_SLOTS + MAX_PATH, NULL, tdm_slot_map_put),
+	SOC_ENUM_EXT("Earpiece Dsense Enable", earpiece_dsense_en,
+			earpiece_dsense_en_get, earpiece_dsense_en_put),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -6882,6 +6918,19 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 					"qcom,quat-mi2s-gpios", 0);
 	for (index = PRIM_MI2S; index < MI2S_MAX; index++)
 		atomic_set(&(pdata->mi2s_gpio_ref_count[index]), 0);
+
+	earpiece_dsense_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"earpiece-dsense-enable", 0);
+	if (earpiece_dsense_en_gpio < 0) {
+		pr_err("missing earpiece_dsense_en_gpio in dt node\n");
+	} else {
+		if (!gpio_is_valid(earpiece_dsense_en_gpio)) {
+			pr_err("Invalid earpiece_dsense_en_gpio\n");
+		} else {
+			gpio_direction_output(earpiece_dsense_en_gpio, 1);
+			is_earpiece_dsense_disable = 1;
+		}
+	}
 
 	/* Register LPASS audio hw vote */
 	lpass_audio_hw_vote = devm_clk_get(&pdev->dev, "lpass_audio_hw_vote");
