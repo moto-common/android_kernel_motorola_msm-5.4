@@ -1844,10 +1844,12 @@ int aw_dev_get_algo_prof(struct aw_device *aw_dev, int *prof_id)
 	return aw_dsp_get_algo_prof(aw_dev, prof_id);
 }
 
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 int aw_dev_set_algo_params_path(struct aw_device *aw_dev)
 {
 	return aw_dsp_set_algo_params_path(aw_dev);
 }
+#endif
 
 #ifdef AW_SPIN_ENABLE
 int aw_dev_set_spin_param(struct aw_device *aw_dev, uint32_t enable, uint32_t relase_time)
