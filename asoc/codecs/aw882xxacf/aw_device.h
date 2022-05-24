@@ -311,7 +311,10 @@ int aw_dev_skt_prof_mode(struct aw_device *aw_dev, int prof_id);
 int aw_dev_set_algo_prof_data(struct aw_device *aw_dev, void *prof_data, unsigned int prof_len);
 int aw_dev_set_algo_prof(struct aw_device *aw_dev, int prof_id);
 int aw_dev_get_algo_prof(struct aw_device *aw_dev, int *prof_id);
+
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 int aw_dev_set_algo_params_path(struct aw_device *aw_dev);
+#endif
 
 int aw_device_probe(struct aw_device *aw_dev);
 int aw_device_remove(struct aw_device *aw_dev);
