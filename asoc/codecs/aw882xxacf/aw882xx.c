@@ -898,8 +898,10 @@ static void aw882xx_request_firmware(struct work_struct *work)
 			container_of(work, struct aw882xx, fw_work.work);
 	const struct firmware *cont = NULL;
 	struct aw_container *aw_cfg = NULL;
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	const struct firmware *skt_cont = NULL;
 	struct aw_container *aw_skt_cfg = NULL;
+#endif
 	int ret = -1;
 
 	aw882xx->fw_status = AW_DEV_FW_FAILED;
@@ -950,7 +952,7 @@ static void aw882xx_request_firmware(struct work_struct *work)
 	}
 	mutex_unlock(&g_aw882xx_lock);
 
-
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	/*load skt bin*/
 	if (aw882xx->skt_prof_mode == AW_PARAMS_DATA_MODE) {
 		ret = request_firmware(&skt_cont, AW_ALGO_SKT_BIN, aw882xx->dev);
@@ -999,6 +1001,7 @@ static void aw882xx_request_firmware(struct work_struct *work)
 			}
 		}
 	}
+#endif
 
 	mutex_lock(&aw882xx->lock);
 	/*aw device init*/
@@ -1145,6 +1148,7 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 	g_algo_rx_en = ctrl_value;
 	aw_dev_info(aw882xx->dev, "set value %d", ctrl_value);
 
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	if (aw882xx->skt_prof_mode == AW_PARAMS_PATH_MODE) {
 		if (ctrl_value) {
 			ret = aw_dev_set_algo_params_path(aw_dev);
@@ -1162,6 +1166,8 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 			}
 		}
 	}
+#endif
+
 	return 0;
 }
 
@@ -2556,6 +2562,7 @@ static int aw882xx_parse_dt(struct device *dev, struct aw882xx *aw882xx,
 			__func__, aw882xx->fade_flag);
 	}
 
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	ret = of_property_read_u32(np, "skt-prof-mode", &aw882xx->skt_prof_mode);
 	if (ret) {
 		aw882xx->skt_prof_mode = AW_PARAMS_PATH_MODE;
@@ -2564,6 +2571,7 @@ static int aw882xx_parse_dt(struct device *dev, struct aw882xx *aw882xx,
 		dev_info(dev, "%s: fade_flag = %d\n",
 			__func__, aw882xx->fade_flag);
 	}
+#endif
 
 	return 0;
 }
