@@ -347,6 +347,8 @@ struct dsi_panel {
 	bool need_execute_shutdown;
 	atomic_t esd_recovery_pending;
 
+	u32 delayms_before_resetlow;
+
 	bool is_twm_en;
 	bool skip_panel_off;
 	bool panel_initialized;
