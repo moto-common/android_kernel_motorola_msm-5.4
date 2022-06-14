@@ -533,6 +533,11 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
+	if(panel->delayms_before_resetlow) {
+		DSI_DEBUG("[lcm] panel = %s delay %d ms before reset low\n", panel->name, panel->delayms_before_resetlow);
+		usleep_range( panel->delayms_before_resetlow * 1000, panel->delayms_before_resetlow * 1000);
+	}
+
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
@@ -2732,6 +2737,7 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	const char *string;
 	int i, rc = 0;
+	u32 val = 0;
 
 	panel->ulps_feature_enabled =
 		utils->read_bool(utils->data, "qcom,ulps-enabled");
@@ -2762,6 +2768,15 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->need_execute_shutdown = utils->read_bool(utils->data,
 			"qcom,platform-need-execute-shutdown");
+
+	rc = utils->read_u32(utils->data, "qcom,platform-delayms-before-resetlow", &val);
+	if (rc) {
+		DSI_DEBUG("[%s] qcom,platform-delayms-before-resetlow unspecified, defaulting to zero\n",
+			 panel->name);
+		panel->delayms_before_resetlow = 0;
+	} else {
+		panel->delayms_before_resetlow = val;
+	}
 
 	panel->spr_info.enable = false;
 	panel->spr_info.pack_type = MSM_DISPLAY_SPR_TYPE_MAX;
