@@ -4204,6 +4204,8 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 {
 	int rc = 0;
 	u32 size;
+	struct device_node *np;
+	char hbm_table_name[64];
 	struct dsi_panel_lhbm_config *lhbm_config;
 	struct dsi_parser_utils *utils = &panel->utils;
 
@@ -4233,15 +4235,31 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 			return rc;
 		}
 
+		np = of_find_node_by_path("/chosen");
+		of_property_read_u64(np, "mmi,panel_ver", &panel->panel_ver);
+		of_node_put(np);
+
+		snprintf(hbm_table_name, sizeof(hbm_table_name),
+			"qcom,mdss-dsi-panel-local-hbm-alpha-%0x-table", panel->panel_ver);
+
 		rc = utils->read_u32_array(utils->data,
+			hbm_table_name,
+			lhbm_config->alpha,
+			lhbm_config->alpha_size);
+		if (rc) {
+			rc = utils->read_u32_array(utils->data,
 				"qcom,mdss-dsi-panel-local-hbm-alpha-table",
 				lhbm_config->alpha,
 				lhbm_config->alpha_size);
-		if (rc) {
-			DSI_ERR("%s:%d, Unable to read local hbm alpha table,rc:%u\n",
-					__func__, __LINE__, rc);
-			lhbm_config->enable = false;
-			return rc;
+			if (rc) {
+				DSI_ERR("%s:%d, Unable to read local hbm alpha table,rc:%u\n",
+						__func__, __LINE__, rc);
+				lhbm_config->enable = false;
+				return rc;
+			}
+		} else {
+			DSI_INFO("%s:%d, use specified table:%s\n",
+					__func__, __LINE__, hbm_table_name);
 		}
 
 		rc = utils->read_u32(utils->data,
