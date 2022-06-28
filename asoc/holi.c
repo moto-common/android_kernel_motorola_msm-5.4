@@ -46,6 +46,10 @@
 #define __CHIPSET__ "HOLI "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
 
+#ifdef CONFIG_SND_SOC_AW87XXX
+	extern int aw87xxx_add_codec_controls(void *codec);
+#endif
+
 #define SAMPLING_RATE_8KHZ      8000
 #define SAMPLING_RATE_11P025KHZ 11025
 #define SAMPLING_RATE_16KHZ     16000
@@ -6430,6 +6434,15 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			__func__, ret);
 		return ret;
 	}
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+	ret = aw87xxx_add_codec_controls((void *)component);
+	if (ret < 0) {
+		pr_err("%s: add_codec_controls failed, ret %d\n",
+			__func__, ret);
+		return ret;
+	};
+#endif
 
 	snd_soc_dapm_new_controls(dapm, msm_int_dapm_widgets,
 				ARRAY_SIZE(msm_int_dapm_widgets));
