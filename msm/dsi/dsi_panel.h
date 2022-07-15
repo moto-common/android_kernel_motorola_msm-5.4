@@ -225,6 +225,7 @@ struct dsi_panel_spr_info {
 
 struct dsi_panel_lhbm_config {
 	bool enable;
+	bool resend_lbhm_off;
 	u32 dbv_level;
 	u32 alpha_reg;
 	u32 alpha_size;

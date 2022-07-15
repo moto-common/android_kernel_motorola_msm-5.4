@@ -1186,9 +1186,15 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
 		if (rc < 0) {
 			DSI_ERR("%s: failed to send param cmds. ret=%d\n", __func__, rc);
 		} else {
-			if(lhbm_config->enable)
+			if(lhbm_config->enable) {
 				bl_lvl = lhbm_config->dbv_level;
-			else
+				if (lhbm_config->resend_lbhm_off && param_info->value == HBM_OFF_STATE) {
+					usleep_range(5000, 5010);
+					rc = dsi_panel_send_param_cmd(panel, param_info);
+					if (rc < 0)
+						DSI_ERR("%s: failed to resend param cmds. ret=%d\n", __func__, rc);
+				}
+			} else
 				bl_lvl = HBM_BRIGHTNESS(param_info->value);
 			rc = dsi_panel_set_backlight(panel, bl_lvl);
 			if (rc)
@@ -4271,6 +4277,9 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 			lhbm_config->enable = false;
 			return rc;
 		}
+
+		lhbm_config->resend_lbhm_off = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-panel-resend-local-hbm-off");
 	} else {
 		DSI_INFO("%s:%d, no local hbm config\n",
 				__func__, __LINE__);
