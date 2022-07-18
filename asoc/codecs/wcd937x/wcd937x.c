@@ -50,15 +50,6 @@
 		SNDRV_PCM_FMTBIT_S24_LE |\
 		SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-#ifdef CONFIG_SND_SOC_AW87XXX
-extern int aw87xxx_set_profile(int dev_index, char *profile);
-static char *aw_profile[] = {"Music", "Off"};
-enum aw87xxx_dev_index {
-	AW_DEV_0 = 0,
-	AW_DEV_1 = 0,
-};
-#endif
-
 enum {
 	CODEC_TX = 0,
 	CODEC_RX,
@@ -757,66 +748,6 @@ static int wcd937x_codec_aux_dac_event(struct snd_soc_dapm_widget *w,
 	return 0;
 
 }
-
-#ifdef CONFIG_SND_SOC_AW87XXX
-static int aw87xxx_pa_dev_0_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *kcontrol, int event)
-{
-	int ret = 0;
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		ret = aw87xxx_set_profile(AW_DEV_0, aw_profile[0]);
-		if (ret < 0) {
-			pr_err("[Awinic] %s: set profile[%s] failed",
-				__func__, aw_profile[0]);
-			return ret;
-		}
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		ret = aw87xxx_set_profile(AW_DEV_0, aw_profile[1]);
-		if (ret < 0) {
-			pr_err("[Awinic] %s: set profile[%s] failed",
-				__func__, aw_profile[1]);
-			return ret;
-		}
-		break;
-	default:
-		pr_err("%s: invalid DAPM event %d\n", __func__, event);
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static int aw87xxx_pa_dev_1_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *kcontrol, int event)
-{
-	int ret = 0;
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		ret = aw87xxx_set_profile(AW_DEV_1, aw_profile[0]);
-		if (ret < 0) {
-		pr_err("[Awinic] %s: set profile[%s] failed",
-		__func__, aw_profile[0]);
-		return ret;
-	}
-	break;
-	case SND_SOC_DAPM_POST_PMD:
-		ret = aw87xxx_set_profile(AW_DEV_1, aw_profile[1]);
-		if (ret < 0) {
-			pr_err("[Awinic] %s: set profile[%s] failed",
-				__func__, aw_profile[1]);
-			return ret;
-		}
-		break;
-	default:
-		pr_err("%s: invalid DAPM event %d\n", __func__, event);
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif
 
 static int wcd937x_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *kcontrol,
@@ -2494,15 +2425,6 @@ static const struct snd_soc_dapm_widget wcd937x_dapm_widgets[] = {
 				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 				SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 
-#ifdef CONFIG_SND_SOC_AW87XXX
-	SND_SOC_DAPM_DAC_E("AW87XXX", NULL, SND_SOC_NOPM, 0, 0,
-				aw87xxx_pa_dev_0_event, SND_SOC_DAPM_PRE_PMU |
-				SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_DAC_E("AW87XXX", NULL, SND_SOC_NOPM, 0, 0,
-				aw87xxx_pa_dev_1_event, SND_SOC_DAPM_PRE_PMU |
-				SND_SOC_DAPM_POST_PMD),
-#endif
-
 	SND_SOC_DAPM_MUX("RDAC3_MUX", SND_SOC_NOPM, 0, 0, &rx_rdac3_mux),
 
 	SND_SOC_DAPM_MIXER_E("RX1", SND_SOC_NOPM, 0, 0, NULL, 0,
@@ -2666,13 +2588,7 @@ static const struct snd_soc_dapm_route wcd937x_audio_map[] = {
 	{"RDAC4", NULL, "RX3"},
 	{"AUX_RDAC", "Switch", "RDAC4"},
 	{"AUX PGA", NULL, "AUX_RDAC"},
-
-#ifdef CONFIG_SND_SOC_AW87XXX
-	{"AW87XXX", NULL, "AUX PGA"},
-	{"AUX", NULL, "AW87XXX"},
-#else
 	{"AUX", NULL, "AUX PGA"},
-#endif
 
 	{"RDAC3_MUX", "RX3", "RX3"},
 	{"RDAC3_MUX", "RX1", "RX1"},
