@@ -4,7 +4,7 @@
 #include "aw87xxx_device.h"
 
 /*#define AW_MTK_OPEN_DSP_PLATFORM*/
-/*#define AW_QCOM_OPEN_DSP_PLATFORM*/
+#define AW_QCOM_OPEN_DSP_PLATFORM
 
 /*Note: The pord_ID is configured according to different platforms*/
 #define AW_DSP_SLEEP_TIME	(10)
@@ -54,6 +54,7 @@ enum aw_dsp_channel {
 uint8_t aw87xxx_dsp_isEnable(void);
 int aw87xxx_dsp_get_rx_module_enable(int *enable);
 int aw87xxx_dsp_set_rx_module_enable(int enable);
+int aw87xxx_dsp_set_copp_module_enable(bool enable);
 int aw87xxx_dsp_get_vmax(uint32_t *vmax, int channel);
 int aw87xxx_dsp_set_vmax(uint32_t vmax, int channel);
 int aw87xxx_dsp_set_spin(uint32_t ctrl_value);

@@ -66,9 +66,16 @@ static LIST_HEAD(g_aw87xxx_list);
 static DEFINE_MUTEX(g_aw87xxx_mutex_lock);
 unsigned int g_aw87xxx_dev_cnt = 0;
 
+#ifdef AW87XXX_RUNIN_TEST
+static unsigned int g_runin_test;
+#endif
+
 static const char *const aw87xxx_monitor_switch[] = {"Disable", "Enable"};
 static const char *const aw87xxx_spin_switch[] = {"spin_0", "spin_90",
 					 "spin_180", "spin_270"};
+
+static const char *const aw87xxx_runin_test_switch[] = {"Off", "On"};
+
 #ifdef AW_KERNEL_VER_OVER_4_19_1
 static struct aw_componet_codec_ops aw_componet_codec_ops = {
 	.add_codec_controls = snd_soc_add_component_controls,
@@ -212,6 +219,9 @@ int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile)
 		ret = aw87xxx_power_on(aw87xxx, profile);
 		if (!ret)
 			aw87xxx_monitor_start(&aw87xxx->monitor);
+#ifdef AW87XXX_RUNIN_TEST
+		schedule_delayed_work(&aw87xxx->adsp_status, msecs_to_jiffies(500));
+#endif
 	}
 	mutex_unlock(&aw87xxx->reg_lock);
 
@@ -533,6 +543,85 @@ static int aw87xxx_spin_switch_get(struct snd_kcontrol *kcontrol,
 }
 
 
+static int aw87xxx_runin_test_switch_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
+
+	ucontrol->value.integer.value[0] = g_runin_test;
+	AW_DEV_LOGI(aw87xxx->dev, "aw87xxx_runin test get val %d", g_runin_test);
+
+	return 0;
+}
+
+static int aw87xxx_runin_test_switch_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	uint32_t ctrl_value = 0;
+	struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
+	ctrl_value = ucontrol->value.integer.value[0];
+
+	if (ctrl_value > 1 ) {
+		ctrl_value = 0;
+	}
+
+	g_runin_test = ctrl_value;
+
+	AW_DEV_LOGI(aw87xxx->dev, "aw87xxx_runin test set val %d", ctrl_value);
+
+	return 0;
+}
+
+static int aw87xxx_runin_test_switch_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	int count;
+
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
+	uinfo->count = 1;
+	count = ARRAY_SIZE(aw87xxx_runin_test_switch);
+
+	uinfo->value.enumerated.items = count;
+
+	if (uinfo->value.enumerated.item >= count)
+		uinfo->value.enumerated.item = count - 1;
+
+	strlcpy(uinfo->value.enumerated.name,
+		aw87xxx_runin_test_switch[uinfo->value.enumerated.item],
+		strlen(aw87xxx_runin_test_switch[uinfo->value.enumerated.item]) + 1);
+
+	return 0;
+}
+
+static void aw87xxx_set_adsp_module_status(struct work_struct *work)
+{
+	int ret = 0;
+	uint32_t ctrl_value = 0;
+	AW_LOGI("g_runin_test = %d", g_runin_test);
+
+	/*no test reg set default value*/
+	if (g_runin_test == 0) {
+		return;
+	}
+
+	/*set afe rx module disable*/
+	ret = aw87xxx_dsp_set_rx_module_enable(ctrl_value);
+	if (ret) {
+		AW_LOGE("disable afe rx module %d falied , ret=%d", ctrl_value, ret);
+		return;
+	}
+	AW_LOGI("disable afe module success");
+
+	/*set skt module disable*/
+	ret = aw87xxx_dsp_set_copp_module_enable(ctrl_value);
+	if (ret) {
+		AW_LOGE("disable skt module %d falied , ret=%d\n", ctrl_value, ret);
+		return;
+	}
+	AW_LOGI("disable skt module success");
+
+}
+
 static int aw87xxx_kcontrol_dynamic_create(struct aw87xxx *aw87xxx,
 						void *codec)
 {
@@ -647,6 +736,20 @@ static int aw87xxx_public_kcontrol_create(struct aw87xxx *aw87xxx,
 	aw87xxx_kcontrol[0].get = aw87xxx_spin_switch_get;
 	aw87xxx_kcontrol[0].put = aw87xxx_spin_switch_put;
 	aw87xxx_kcontrol[0].private_value = (unsigned long)aw87xxx;
+
+	kctl_name[1] = devm_kzalloc(aw87xxx->dev, AW_NAME_BUF_MAX,
+			GFP_KERNEL);
+	if (kctl_name[1] == NULL)
+		return -ENOMEM;
+
+	snprintf(kctl_name[1], AW_NAME_BUF_MAX, "aw87xxx_runin_test_switch");
+
+	aw87xxx_kcontrol[1].name = kctl_name[1];
+	aw87xxx_kcontrol[1].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+	aw87xxx_kcontrol[1].info = aw87xxx_runin_test_switch_info;
+	aw87xxx_kcontrol[1].get = aw87xxx_runin_test_switch_get;
+	aw87xxx_kcontrol[1].put = aw87xxx_runin_test_switch_put;
+	aw87xxx_kcontrol[1].private_value = (unsigned long)aw87xxx;
 
 	ret = aw_componet_codec_ops.add_codec_controls(aw87xxx->codec,
 				aw87xxx_kcontrol, kcontrol_num);
@@ -1390,6 +1493,11 @@ static int aw87xxx_i2c_probe(struct i2c_client *client,
 
 	/*monitor init*/
 	aw87xxx_monitor_init(aw87xxx->dev, &aw87xxx->monitor, dev_node);
+
+#ifdef AW87XXX_RUNIN_TEST
+	g_runin_test = 0;
+	INIT_DELAYED_WORK(&aw87xxx->adsp_status, aw87xxx_set_adsp_module_status);
+#endif
 
 	/*add device to total list */
 	mutex_lock(&g_aw87xxx_mutex_lock);
