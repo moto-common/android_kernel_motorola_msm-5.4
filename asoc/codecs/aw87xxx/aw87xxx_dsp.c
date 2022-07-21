@@ -20,14 +20,34 @@
 #include <linux/hrtimer.h>
 #include <linux/proc_fs.h>
 #include <linux/init.h>
+#include <linux/version.h>
 #include "aw87xxx_log.h"
 #include "aw87xxx_dsp.h"
+
+/***************dsp communicate**************/
+#ifdef AW_QCOM_OPEN_DSP_PLATFORM
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 1))
+#include <dsp/msm_audio_ion.h>
+#include <dsp/q6afe-v2.h>
+#include <dsp/q6audio-v2.h>
+#include <dsp/q6adm-v2.h>
+#else
+#include <linux/msm_audio_ion.h>
+#include <sound/q6afe-v2.h>
+#include <sound/q6audio-v2.h>
+#include <sound/q6adm-v2.h>
+#include <sound/adsp_err.h>
+#endif
+#endif
 
 static DEFINE_MUTEX(g_dsp_lock);
 static unsigned int g_spin_value = 0;
 
 static int g_rx_topo_id = AW_RX_DEFAULT_TOPO_ID;
 static int g_rx_port_id = AW_RX_DEFAULT_PORT_ID;
+
+#define AW_COPP_MODULE_ID		(0X10013D02)	/*SKT module id*/
+#define AW_COPP_PARAMS_ID_AWDSP_ENABLE	(0X10013D14)	/*SKT enable param id*/
 
 #ifdef AW_MTK_OPEN_DSP_PLATFORM
 extern int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer,
@@ -76,6 +96,46 @@ static void aw_set_port_id(int rx_port_id)
 	return;
 }
 #endif
+
+static int aw_adm_param_enable(int port_id, int module_id, int param_id, int enable)
+{
+	/*for v3*/
+	int copp_idx = 0;
+	uint32_t enable_param;
+	struct param_hdr_v3 param_hdr;
+	int rc = 0;
+
+	pr_info("%s Awinic port_id 0x%x, module_id 0x%x, enable %d\n",
+			__func__, port_id, module_id, enable);
+
+	copp_idx = adm_get_default_copp_idx(port_id);
+	if (copp_idx < 0 || copp_idx >= MAX_COPPS_PER_PORT) {
+			pr_err("%s: Invalid copp_num: %d\n", __func__, copp_idx);
+			return -EINVAL;
+	}
+
+	if (enable < 0 || enable > 1) {
+			pr_err("%s: Invalid value for enable %d\n", __func__, enable);
+			return -EINVAL;
+	}
+
+	pr_info("%s Awinic port_id 0x%x, module_id 0x%x, copp_idx 0x%x, enable %d\n",
+			__func__, port_id, module_id, copp_idx, enable);
+
+	memset(&param_hdr, 0, sizeof(param_hdr));
+	param_hdr.module_id = module_id;
+	param_hdr.instance_id = INSTANCE_ID_0;
+	param_hdr.param_id = param_id;
+	param_hdr.param_size = sizeof(enable_param);
+	enable_param = enable;
+
+	rc = adm_pack_and_set_one_pp_param(port_id, copp_idx, param_hdr,
+					(uint8_t *) &enable_param);
+	if (rc)
+		pr_err("%s: Awinic Failed to set enable of module(%d) instance(%d) to %d, err %d\n",
+				__func__, module_id, INSTANCE_ID_0, enable, rc);
+	return rc;
+}
 
 uint8_t aw87xxx_dsp_isEnable(void)
 {
@@ -252,6 +312,18 @@ int aw87xxx_dsp_set_rx_module_enable(int enable)
 			&enable, sizeof(uint32_t));
 }
 
+int aw87xxx_dsp_set_copp_module_enable(bool enable)
+{
+	int ret;
+
+	ret = aw_adm_param_enable(g_rx_port_id, AW_COPP_MODULE_ID,
+			AW_COPP_PARAMS_ID_AWDSP_ENABLE, enable);
+	if (ret)
+		return -EINVAL;
+
+	AW_LOGI("set skt %s", enable == 1 ? "enable" : "disable");
+	return 0;
+}
 
 int aw87xxx_dsp_get_vmax(uint32_t *vmax, int dev_index)
 {

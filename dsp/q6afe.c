@@ -33,6 +33,17 @@
 
 void aw_cal_unmap_memory(void);
 #endif /* #ifdef CONFIG_SND_SOC_AWINIC_AW882XX */
+
+#ifdef CONFIG_SND_SOC_AW87XXX
+static int g_rx_port_id = 0;
+
+void aw_set_port_id(int rx_port_id)
+{
+       g_rx_port_id = rx_port_id;
+}
+EXPORT_SYMBOL(aw_set_port_id);
+#endif /* #ifdef CONFIG_SND_SOC_AW87XXX */
+
 #define WAKELOCK_TIMEOUT	5000
 #define AFE_CLK_TOKEN	1024
 #define AFE_NOWAIT_TOKEN	2048
@@ -609,6 +620,7 @@ int afe_get_topology(int port_id)
 done:
 	return topology;
 }
+EXPORT_SYMBOL(afe_get_topology);
 
 /**
  * afe_set_aanc_info -
@@ -11955,7 +11967,7 @@ static int afe_unmap_cal_data(int32_t cal_type,
 	ret = afe_cmd_memory_unmap(
 		cal_block->map_data.q6map_handle);
 	atomic_set(&this_afe.mem_map_cal_index, -1);
-#ifdef CONFIG_AW882XX_PARAMS_STORED_IN_BIN
+#if defined(CONFIG_AW882XX_PARAMS_STORED_IN_BIN) || defined(CONFIG_SND_SOC_AW87XXX)
 	atomic_set(&this_afe.mem_map_cal_handles[cal_index],0);
 #endif
 	if (ret < 0) {

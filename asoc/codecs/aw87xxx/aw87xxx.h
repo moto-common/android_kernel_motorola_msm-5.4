@@ -16,7 +16,7 @@
 #define AW87XXX_OFF_BIN_OK		(1)
 
 #define AW87XXX_PRIVATE_KCONTROL_NUM	(3)
-#define AW87XXX_PUBLIC_KCONTROL_NUM	(1)
+#define AW87XXX_PUBLIC_KCONTROL_NUM	(2)
 
 #define AW_I2C_RETRIES			(5)
 #define AW_I2C_RETRY_DELAY		(2)
@@ -32,6 +32,8 @@
 #define AWRW_ADDR_BYTES			(1)
 #define AWRW_DATA_BYTES			(1)
 #define AWRW_HDR_LEN			(24)
+
+#define AW87XXX_RUNIN_TEST	1
 
 /***********************************************************
  *
@@ -113,6 +115,9 @@ struct aw87xxx {
 	struct list_head list;
 
 	struct aw_monitor monitor;
+#ifdef AW87XXX_RUNIN_TEST
+	struct delayed_work adsp_status;
+#endif
 };
 
 int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile);
