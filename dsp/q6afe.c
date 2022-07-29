@@ -4006,11 +4006,19 @@ int aw_send_afe_tx_module_enable(uint32_t tx_port_id, void *buf, int cmd_size)
 }
 EXPORT_SYMBOL(aw_send_afe_tx_module_enable);
 
+#ifdef CONFIG_SND_SOC_AW87XXX
+int aw_send_afe_cal_apr(uint32_t param_id, void *buf, int cmd_size, bool write)     /*aw87xxx*/
+#else
 int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
-						uint32_t param_id, void *buf, int cmd_size, bool write)
+						uint32_t param_id, void *buf, int cmd_size, bool write)   /*aw882xx*/
+#endif
 {
 	int32_t result = 0;
-	uint32_t port_id = rx_port_id;
+#ifdef CONFIG_SND_SOC_AW87XXX
+	uint32_t port_id = g_rx_port_id;
+#else
+	uint32_t port_id = rx_port_id;   /*aw882xx*/
+#endif
 	int32_t  module_id = AFE_MODULE_ID_AWDSP_RX;
 	uint32_t port_index = 0;
 	uint32_t payload_size = 0;
@@ -4021,10 +4029,12 @@ int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
 
 	pr_debug("%s: enter\n", __func__);
 
+#ifndef CONFIG_SND_SOC_AW87XXX
 	if (param_id == AFE_PARAM_ID_AWDSP_TX_SET_ENABLE) {
 		port_id = tx_port_id;
 		module_id = AFE_MODULE_ID_AWDSP_TX;
 	}
+#endif
 
 	if (aw_cal->map_data.dma_buf == 0) {
 		/*Minimal chunk size is 8K*/
