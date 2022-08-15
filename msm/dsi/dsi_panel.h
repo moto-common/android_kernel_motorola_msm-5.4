@@ -92,6 +92,11 @@ enum bl_update_flag {
 	BL_UPDATE_NONE,
 };
 
+enum dsi_backlight_level_align_type {
+       DSI_BACKLIGHT_LEVEL_ALIGN_NORMAL = 0,
+       DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0 = 1,
+};
+
 enum {
 	MODE_GPIO_NOT_VALID = 0,
 	MODE_SEL_DUAL_PORT,
@@ -161,6 +166,7 @@ struct dsi_backlight_config {
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_scale_sv;
+	u32 bl_level_align;
 	bool bl_inverted_dbv;
 	bool bl_demura_cmd;
 	u32 demura_type;
