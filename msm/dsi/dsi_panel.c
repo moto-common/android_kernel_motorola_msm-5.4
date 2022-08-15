@@ -715,14 +715,22 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 	}
 
+       if (panel->bl_config.bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0){
+                DSI_ERR("dsi_panel_update_backlight cqh bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0\n");
+                bl_lvl = ((((bl_lvl >> 3) & 0xff) << 8) | ((bl_lvl << 1) & 0x0e));
+       }
+
 	if (panel->bl_config.bl_inverted_dbv)
+	{
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
+	}
 
         if (bl->bl_2bytes_enable){
                 bl_lvl_2bytes =  ((bl_lvl & 0xff00) >> 8) | ((bl_lvl & 0xff) << 8);
                 rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl_2bytes);
-        }else
+        }else{
 		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+	}
 
 	if (rc < 0)
 		DSI_ERR("failed to update dcs backlight:%d\n", bl_lvl);
@@ -3176,6 +3184,16 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		pr_debug("set default brightness to max level\n");
 	} else {
 		panel->bl_config.brightness_default_level = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-level-align", &val);
+	if (rc) {
+               DSI_DEBUG("[%s] bl_level_align unspecified, defaulting to normal, no special algin\n",
+                        panel->name);
+               panel->bl_config.bl_level_align = DSI_BACKLIGHT_LEVEL_ALIGN_NORMAL;
+	} else {
+               panel->bl_config.bl_level_align = val;
+               DSI_ERR("dsi_panel_update_backlight cqh bl_level_align = %s \n",val);
 	}
 
 	panel->bl_config.bl_2bytes_enable = utils->read_bool(utils->data,
