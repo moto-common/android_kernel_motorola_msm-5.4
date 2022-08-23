@@ -95,6 +95,7 @@ enum bl_update_flag {
 enum dsi_backlight_level_align_type {
        DSI_BACKLIGHT_LEVEL_ALIGN_NORMAL = 0,
        DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0 = 1,
+       DSI_BACKLIGHT_LEVEL_ALIGN_BIT11_4_BYTE0 = 2,
 };
 
 enum {
