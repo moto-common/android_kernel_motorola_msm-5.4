@@ -715,10 +715,14 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 	}
 
-       if (panel->bl_config.bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0){
-                DSI_ERR("dsi_panel_update_backlight cqh bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0\n");
-                bl_lvl = ((((bl_lvl >> 3) & 0xff) << 8) | ((bl_lvl << 1) & 0x0e));
-       }
+	if (panel->bl_config.bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0){
+		DSI_ERR("dsi_panel_update_backlight cqh bl_level_align == DSI_BACKLIGHT_LEVEL_ALIGN_BIT15_8_BIT3_0\n");
+		bl_lvl = ((((bl_lvl >> 3) & 0xff) << 8) | ((bl_lvl << 1) & 0x0e));
+	}
+	else if (DSI_BACKLIGHT_LEVEL_ALIGN_BIT11_4_BYTE0 == panel->bl_config.bl_level_align) {
+		bl_lvl = (((bl_lvl & 0xff0) << 4) | (bl_lvl & 0x0f));
+		DSI_DEBUG("case BIT11_4, trans bl_lvl=0x%04x\n", bl_lvl);
+	}
 
 	if (panel->bl_config.bl_inverted_dbv)
 	{
