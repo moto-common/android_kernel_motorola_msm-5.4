@@ -405,6 +405,7 @@ struct dsi_panel {
 	int panel_recovery_retry;
 	bool is_panel_dead;
 
+	bool is_hbm_using_51_cmd;
 	int hbm_en_gpio;
 };
 
