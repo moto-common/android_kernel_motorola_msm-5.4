@@ -70,9 +70,13 @@ unsigned int g_aw87xxx_dev_cnt = 0;
 static unsigned int g_runin_test;
 #endif
 
+static unsigned int g_saved_spin_value;
+static unsigned int g_spin_enable;
+
 static const char *const aw87xxx_monitor_switch[] = {"Disable", "Enable"};
 static const char *const aw87xxx_spin_switch[] = {"spin_0", "spin_90",
 					 "spin_180", "spin_270"};
+static const char *const aw87xxx_spin_status[] = {"Off", "On"};
 
 static const char *const aw87xxx_runin_test_switch[] = {"Off", "On"};
 
@@ -222,6 +226,7 @@ int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile)
 #ifdef AW87XXX_RUNIN_TEST
 		schedule_delayed_work(&aw87xxx->adsp_status, msecs_to_jiffies(500));
 #endif
+		schedule_delayed_work(&aw87xxx->spin_status, msecs_to_jiffies(100));
 	}
 	mutex_unlock(&aw87xxx->reg_lock);
 
@@ -522,6 +527,12 @@ static int aw87xxx_spin_switch_put(struct snd_kcontrol *kcontrol,
 	struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
 	ctrl_value = ucontrol->value.integer.value[0];
 
+	g_saved_spin_value = ctrl_value;
+
+	//don't send status to adsp until it's enabled when speaker on
+	if (!g_spin_enable)
+		return 0;
+
 	ret = aw87xxx_dsp_set_spin(ctrl_value);
 	if (ret) {
 		AW_DEV_LOGE(aw87xxx->dev, "write spin failed");
@@ -536,12 +547,80 @@ static int aw87xxx_spin_switch_get(struct snd_kcontrol *kcontrol,
 {
 	struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
 
+	if (!g_spin_enable){
+		ucontrol->value.integer.value[0] = g_saved_spin_value;
+		return 0;
+	}
+
 	ucontrol->value.integer.value[0] = aw87xxx_dsp_get_spin();
 	AW_DEV_LOGD(aw87xxx->dev, "current spin is %ld", ucontrol->value.integer.value[0]);
 
 	return 0;
 }
 
+
+static int aw87xxx_spin_status_info(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_info *uinfo)
+{
+        int count;
+
+        uinfo->type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
+        uinfo->count = 1;
+        count = ARRAY_SIZE(aw87xxx_spin_status);
+
+        uinfo->value.enumerated.items = count;
+
+        if (uinfo->value.enumerated.item >= count)
+                uinfo->value.enumerated.item = count - 1;
+
+        strlcpy(uinfo->value.enumerated.name,
+                aw87xxx_spin_status[uinfo->value.enumerated.item],
+                strlen(aw87xxx_spin_status[uinfo->value.enumerated.item]) + 1);
+
+        return 0;
+}
+
+static int aw87xxx_spin_status_put(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_value *ucontrol)
+{
+        uint32_t ctrl_value = 0;
+        //int ret = 0;
+        //struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
+        ctrl_value = ucontrol->value.integer.value[0];
+
+        g_spin_enable = ctrl_value;
+
+        return 0;
+}
+
+static int aw87xxx_spin_status_get(struct snd_kcontrol *kcontrol,
+        struct snd_ctl_elem_value *ucontrol)
+{
+        struct aw87xxx *aw87xxx = (struct aw87xxx *)kcontrol->private_value;
+
+        ucontrol->value.integer.value[0] = g_spin_enable;
+        AW_DEV_LOGD(aw87xxx->dev, "current spin status enable is %ld", ucontrol->value.integer.value[0]);
+
+        return 0;
+}
+
+// delayed work to update spin value
+static void aw87xxx_set_spin_status(struct work_struct *work)
+{
+        int ret = 0;
+        AW_LOGI("g_saved_spin_value = %d, g_spin_enable = %d", g_saved_spin_value, g_spin_enable);
+
+	if (!g_spin_enable)
+		return;
+
+        ret = aw87xxx_dsp_set_spin(g_saved_spin_value);
+        if (ret) {
+                AW_LOGE("write spin failed");
+        }
+        AW_LOGD("write spin done g_saved_spin_value=%d", g_saved_spin_value);
+
+	return;
+}
 
 static int aw87xxx_runin_test_switch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -750,6 +829,20 @@ static int aw87xxx_public_kcontrol_create(struct aw87xxx *aw87xxx,
 	aw87xxx_kcontrol[1].get = aw87xxx_runin_test_switch_get;
 	aw87xxx_kcontrol[1].put = aw87xxx_runin_test_switch_put;
 	aw87xxx_kcontrol[1].private_value = (unsigned long)aw87xxx;
+
+	kctl_name[2] = devm_kzalloc(aw87xxx->dev, AW_NAME_BUF_MAX,
+			GFP_KERNEL);
+	if (kctl_name[2] == NULL)
+		return -ENOMEM;
+
+	snprintf(kctl_name[2], AW_NAME_BUF_MAX, "aw87xxx_spin_status");
+
+	aw87xxx_kcontrol[2].name = kctl_name[2];
+        aw87xxx_kcontrol[2].iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+        aw87xxx_kcontrol[2].info = aw87xxx_spin_status_info;
+        aw87xxx_kcontrol[2].get = aw87xxx_spin_status_get;
+        aw87xxx_kcontrol[2].put = aw87xxx_spin_status_put;
+        aw87xxx_kcontrol[2].private_value = (unsigned long)aw87xxx;
 
 	ret = aw_componet_codec_ops.add_codec_controls(aw87xxx->codec,
 				aw87xxx_kcontrol, kcontrol_num);
@@ -1498,6 +1591,10 @@ static int aw87xxx_i2c_probe(struct i2c_client *client,
 	g_runin_test = 0;
 	INIT_DELAYED_WORK(&aw87xxx->adsp_status, aw87xxx_set_adsp_module_status);
 #endif
+	g_saved_spin_value = AW_SPIN_0;
+	INIT_DELAYED_WORK(&aw87xxx->spin_status, aw87xxx_set_spin_status);
+
+	g_spin_enable = 0;
 
 	/*add device to total list */
 	mutex_lock(&g_aw87xxx_mutex_lock);
