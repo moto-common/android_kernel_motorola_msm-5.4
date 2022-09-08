@@ -488,6 +488,16 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto exit;
 	}
 
+	if (panel->reset_config.panel_on_rst_pull_down) {
+                /* need pull down lcd rst first */
+
+                if (gpio_is_valid(panel->reset_config.reset_gpio)) {
+                        DSI_INFO("dsp dbg: set lcd reset_gpio to 0\n");
+                        gpio_set_value(panel->reset_config.reset_gpio, 0);
+                        usleep_range(3000, 3000 + 100);
+                }
+	}
+
 	if (!panel->keep_regulators_on) {
 		rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 		if (rc) {
@@ -2721,6 +2731,9 @@ static int dsi_panel_parse_reset_sequence(struct dsi_panel *panel)
 		rc = -ENOMEM;
 		goto error;
 	}
+
+	panel->reset_config.panel_on_rst_pull_down = utils->read_bool(utils->data,
+                                "qcom,mdss-panel-on-rst-pull-down");
 
 	rc = utils->read_u32_array(utils->data, "qcom,mdss-dsi-reset-sequence",
 					arr_32, length);
