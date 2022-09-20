@@ -23,12 +23,19 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/ctype.h>
+#include <linux/version.h>
+#if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
 #include <linux/dma-contiguous.h>
+#endif
 #include <linux/dma-mapping.h>
 #include <linux/mmi_annotate.h>
 #include <linux/seq_file.h>
 #include <linux/fs.h>
-#include <linux/version.h>
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+#include <soc/qcom/minidump.h>
+#endif
+#endif
 
 #define MAX_USER_STR 1024
 #define DEFAULT_MEM_SIZE 4096
@@ -58,6 +65,7 @@ static DEFINE_MUTEX(mem_lock);
 static struct proc_dir_entry *procfs_file;
 static struct persist_data_t *persist_data;
 static struct mem_data_t mem_data;
+static int persist_unsupported = 0;
 
 static int mmi_annotate_seq_show(struct seq_file *f, void *ptr)
 {
@@ -87,11 +95,23 @@ static ssize_t mmi_annotate_write(struct file *file, const char __user *buf,
 	if (copy_from_user(buffer, buf, count > maxlen ? maxlen : count))
 		return -EFAULT;
 
-	mmi_annotate_persist("%s", buffer);
+	if (!persist_unsupported)
+		mmi_annotate_persist("%s", buffer);
+	else
+		mmi_annotate("%s", buffer);
 
 	return count;
 }
 
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+static const struct proc_ops mmi_annotate_operations = {
+	.proc_open		= mmi_annotate_open,
+	.proc_read		= seq_read,
+	.proc_write		= mmi_annotate_write,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release,
+};
+#else
 static const struct file_operations mmi_annotate_operations = {
 	.open		= mmi_annotate_open,
 	.read		= seq_read,
@@ -99,6 +119,7 @@ static const struct file_operations mmi_annotate_operations = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)
 static void* mmi_annotate_ram_vmap(phys_addr_t start, size_t size)
@@ -147,6 +168,11 @@ static int mmi_annotate_probe(struct platform_device *pdev)
 	struct platform_data *pdata;
 	struct resource res;
 	struct device_node *node;
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+	struct md_region md_entry;
+#endif
+#endif
 	int err = 0;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
@@ -203,6 +229,10 @@ static int mmi_annotate_probe(struct platform_device *pdev)
 	else
 		dev_info(dev, "mem-size %x", mem_data.size);
 
+	persist_unsupported = of_property_read_bool(dev->of_node, "persist_unsupported");
+	if (persist_unsupported )
+		dev_info(dev, "persist unsupported : 1");
+
 	mem_data.contents = kzalloc(mem_data.size, GFP_KERNEL);
 	if(!mem_data.contents) {
 		dev_err(dev, "Cannot allocate buffer of size %x\n",
@@ -227,6 +257,24 @@ static int mmi_annotate_probe(struct platform_device *pdev)
 	/* Create the procfs file at /proc/driver/mmi_annotate */
 	procfs_file = proc_create("driver/mmi_annotate",
 		0444, NULL, &mmi_annotate_operations);
+
+#if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+	/*Register annotate to minidump */
+	strlcpy(md_entry.name, "ANNOTATE", sizeof(md_entry.name));
+	if (!persist_unsupported) {
+		md_entry.virt_addr = (uintptr_t)phys_to_virt(pdata->mem_address);
+		md_entry.phys_addr = pdata->mem_address;
+		md_entry.size = pdata->mem_size;
+	} else {
+		md_entry.virt_addr = (uintptr_t)mem_data.contents;
+		md_entry.phys_addr = virt_to_phys((void*)mem_data.contents);
+		md_entry.size = mem_data.size;
+	}
+	if (msm_minidump_add_region(&md_entry) < 0)
+		pr_err("Failed to add annotate in Minidump\n");
+#endif
+#endif
 err:
 	return err;
 }
@@ -262,14 +310,18 @@ int mmi_annotate_persist(const char *fmt, ...)
 	len += vsnprintf(line_buf, sizeof(line_buf), fmt, args);
 	va_end(args);
 
-	mutex_lock(&persist_lock);
-	if(persist_data &&
-		persist_data->cur_off + len < persist_data->size) {
-		memcpy(persist_data->contents + persist_data->cur_off,
-			line_buf, len);
-		persist_data->cur_off += len;
+	if (!persist_unsupported) {
+		mutex_lock(&persist_lock);
+		if(persist_data &&
+			persist_data->cur_off + len < persist_data->size) {
+			memcpy(persist_data->contents + persist_data->cur_off,
+				line_buf, len);
+			persist_data->cur_off += len;
+		}
+		mutex_unlock(&persist_lock);
+	} else {
+		mmi_annotate("%s", line_buf);
 	}
-	mutex_unlock(&persist_lock);
 
 	return 0;
 }
