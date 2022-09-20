@@ -24,6 +24,7 @@
 /* Header files */
 
 #include "wma.h"
+#include "enet.h"
 #include "wma_api.h"
 #include "cds_api.h"
 #include "wmi_unified_api.h"
@@ -65,7 +66,6 @@
 #include <cdp_txrx_cfg.h>
 #include "cdp_txrx_stats.h"
 #include <cdp_txrx_misc.h>
-#include "enet.h"
 #include "wlan_mgmt_txrx_utils_api.h"
 #include "wlan_objmgr_psoc_obj.h"
 #include "wlan_objmgr_pdev_obj.h"
@@ -886,6 +886,27 @@ void wma_set_bss_rate_flags(tp_wma_handle wma, uint8_t vdev_id,
 	wma_cp_stats_set_rate_flag(wma, vdev_id);
 }
 
+void wma_set_vht_txbf_cfg(struct mac_context *mac, uint8_t vdev_id)
+{
+	wmi_vdev_txbf_en txbf_en = {0};
+	QDF_STATUS status;
+	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
+
+	if (!wma)
+		return;
+
+	txbf_en.sutxbfee = mac->mlme_cfg->vht_caps.vht_cap_info.su_bformee;
+	txbf_en.mutxbfee =
+		mac->mlme_cfg->vht_caps.vht_cap_info.enable_mu_bformee;
+	txbf_en.sutxbfer = mac->mlme_cfg->vht_caps.vht_cap_info.su_bformer;
+
+	status = wma_vdev_set_param(wma->wmi_handle, vdev_id,
+				    WMI_VDEV_PARAM_TXBF,
+				    *((A_UINT8 *)&txbf_en));
+	if (QDF_IS_STATUS_ERROR(status))
+		wma_err("failed to set VHT TXBF(status = %d)", status);
+}
+
 /**
  * wmi_unified_send_txbf() - set txbf parameter to fw
  * @wma: wma handle
@@ -929,15 +950,13 @@ static void wma_data_tx_ack_work_handler(void *ack_work)
 	tp_wma_handle wma_handle;
 	wma_tx_ota_comp_callback ack_cb;
 
-	if (cds_is_load_or_unload_in_progress()) {
-		wma_err("Driver load/unload in progress");
-		qdf_mem_free(ack_work);
-		return;
-	}
-
 	work = (struct wma_tx_ack_work_ctx *)ack_work;
 
 	wma_handle = work->wma_handle;
+	if (!wma_handle || cds_is_load_or_unload_in_progress()) {
+		wma_err("Driver load/unload in progress");
+		goto end;
+	}
 	ack_cb = wma_handle->umac_data_ota_ack_cb;
 
 	if (work->status)
@@ -951,10 +970,13 @@ static void wma_data_tx_ack_work_handler(void *ack_work)
 	else
 		wma_err("Data Tx Ack Cb is NULL");
 
-	wma_handle->umac_data_ota_ack_cb = NULL;
-	wma_handle->last_umac_data_nbuf = NULL;
+end:
 	qdf_mem_free(work);
-	wma_handle->ack_work_ctx = NULL;
+	if (wma_handle) {
+		wma_handle->umac_data_ota_ack_cb = NULL;
+		wma_handle->last_umac_data_nbuf = NULL;
+		wma_handle->ack_work_ctx = NULL;
+	}
 }
 
 /**
@@ -2473,14 +2495,14 @@ QDF_STATUS wma_tx_packet(void *wma_context, void *tx_frame, uint16_t frmLen,
 		if (tx_frm_ota_comp_cb) {
 			if (wma_handle->umac_data_ota_ack_cb) {
 				/*
-				 * If last data frame was sent more than 5 secs
+				 * If last data frame was sent more than 2 secs
 				 * ago and still we didn't receive ack/nack from
 				 * fw then allow Tx of this data frame
 				 */
 				if (curr_timestamp >=
 				    wma_handle->last_umac_data_ota_timestamp +
-				    500) {
-					wma_err("No Tx Ack for last data frame for more than 5 secs, allow Tx of current data frame");
+				    200) {
+					wma_err("No Tx Ack for last data frame for more than 2 secs, allow Tx of current data frame");
 				} else {
 					wma_err("Already one Data pending for Ack, reject Tx of data frame");
 					cds_packet_free((void *)tx_frame);
@@ -3075,8 +3097,42 @@ uint8_t wma_rx_invalid_peer_ind(uint8_t vdev_id, void *wh)
 	return 0;
 }
 
+static bool
+wma_drop_delba(tp_wma_handle wma, uint8_t vdev_id,
+	       enum cdp_delba_rcode cdp_reason_code)
+{
+	struct wlan_objmgr_vdev *vdev;
+	qdf_time_t last_ts, ts = qdf_mc_timer_get_system_time();
+	bool drop = false;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(wma->psoc, vdev_id,
+						    WLAN_MLME_CM_ID);
+	if (!vdev) {
+		wma_err("vdev is NULL");
+		return drop;
+	}
+	if (!wlan_mlme_is_ba_2k_jump_iot_ap(vdev))
+		goto done;
+
+	last_ts = wlan_mlme_get_last_delba_sent_time(vdev);
+	if ((last_ts && cdp_reason_code == CDP_DELBA_2K_JUMP) &&
+	    (ts - last_ts) < CDP_DELBA_INTERVAL_MS) {
+		wma_debug("Drop DELBA, last sent ts: %lu current ts: %lu",
+			  last_ts, ts);
+		drop = true;
+	}
+
+	wlan_mlme_set_last_delba_sent_time(vdev, ts);
+
+done:
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_MLME_CM_ID);
+
+	return drop;
+}
+
 int wma_dp_send_delba_ind(uint8_t vdev_id, uint8_t *peer_macaddr,
-			  uint8_t tid, uint8_t reason_code)
+			  uint8_t tid, uint8_t reason_code,
+			  enum cdp_delba_rcode cdp_reason_code)
 {
 	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
 	struct lim_delba_req_info *req;
@@ -3085,6 +3141,10 @@ int wma_dp_send_delba_ind(uint8_t vdev_id, uint8_t *peer_macaddr,
 		wma_err("wma handle or mac addr is NULL");
 		return -EINVAL;
 	}
+
+	if (wma_drop_delba(wma, vdev_id, cdp_reason_code))
+		return 0;
+
 	req = qdf_mem_malloc(sizeof(*req));
 	if (!req)
 		return -ENOMEM;
@@ -3104,7 +3164,7 @@ bool wma_is_roam_in_progress(uint32_t vdev_id)
 {
 	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
 
-	if (!wma)
+	if (!wma_is_vdev_valid(vdev_id))
 		return false;
 
 	return wma->interfaces[vdev_id].roaming_in_progress;

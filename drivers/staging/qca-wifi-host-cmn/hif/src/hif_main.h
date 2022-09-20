@@ -143,6 +143,22 @@ struct hif_ce_stats {
 	int ce_ring_delta_fail_count;
 };
 
+#ifdef HIF_DETECTION_LATENCY_ENABLE
+struct hif_latency_detect {
+	qdf_timer_t detect_latency_timer;
+	uint32_t detect_latency_timer_timeout;
+	bool is_timer_started;
+	bool enable_detection;
+	/* threshold when stall happens */
+	uint32_t detect_latency_threshold;
+	int ce2_tasklet_sched_cpuid;
+	qdf_time_t ce2_tasklet_sched_time;
+	qdf_time_t ce2_tasklet_exec_time;
+	qdf_time_t credit_request_time;
+	qdf_time_t credit_report_time;
+};
+#endif
+
 /*
  * Note: For MCL, #if defined (HIF_CONFIG_SLUB_DEBUG_ON) needs to be checked
  * for defined here
@@ -268,6 +284,16 @@ struct hif_softc {
 	/* Variable to track the link state change in RTPM */
 	qdf_atomic_t pm_link_state;
 #endif
+#ifdef HIF_DETECTION_LATENCY_ENABLE
+	struct hif_latency_detect latency_detect;
+#endif
+#ifdef SYSTEM_PM_CHECK
+	qdf_atomic_t sys_pm_state;
+#endif
+#if defined(HIF_IPCI) && defined(FEATURE_HAL_DELAYED_REG_WRITE)
+	qdf_atomic_t dp_ep_vote_access;
+	qdf_atomic_t ep_vote_access;
+#endif
 };
 
 static inline
@@ -279,6 +305,18 @@ void *hif_get_hal_handle(struct hif_opaque_softc *hif_hdl)
 		return NULL;
 
 	return sc->hal_soc;
+}
+
+/**
+ * hif_get_num_active_tasklets() - get the number of active
+ *		tasklets pending to be completed.
+ * @scn: HIF context
+ *
+ * Returns: the number of tasklets which are active
+ */
+static inline int hif_get_num_active_tasklets(struct hif_softc *scn)
+{
+	return qdf_atomic_read(&scn->active_tasklet_cnt);
 }
 
 /**

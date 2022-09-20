@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -128,10 +128,6 @@ int wma_rx_ready_event(void *handle, uint8_t *ev, uint32_t len);
 int  wma_rx_service_ready_event(void *handle, uint8_t *ev, uint32_t len);
 
 int wma_rx_service_ready_ext_event(void *handle, uint8_t *ev, uint32_t len);
-
-void wma_setneedshutdown(void);
-
-bool wma_needshutdown(void);
 
 QDF_STATUS wma_wait_for_ready_event(WMA_HANDLE handle);
 
@@ -361,6 +357,19 @@ wma_set_tx_rx_aggr_size_per_ac(WMA_HANDLE wma_handle,
 			       uint8_t vdev_id,
 			       struct wlan_mlme_qos *qos_aggr,
 			       wmi_vdev_custom_aggr_type_t aggr_type);
+
+/**
+ * wma_set_sw_retry_threshold() - set sw retry threshold per vdev
+ * @vdev_id: vdev id
+ * @sw_retry_count: sw retry number
+ * @retry_type: SW vdev retry type
+ *
+ * This function sends WMI command to set the sw retry threshold per vdev.
+ *
+ * Return: QDF_STATUS.
+ */
+QDF_STATUS wma_set_vdev_sw_retry_th(uint8_t vdev_id, uint8_t sw_retry_count,
+				    wmi_vdev_custom_sw_retry_type_t retry_type);
 
 /**
  * wma_set_sw_retry_threshold_per_ac() - set sw retry threshold per AC for tx
@@ -808,26 +817,6 @@ int wma_wlm_stats_req(int vdev_id, uint32_t bitmask, uint32_t max_size,
 int wma_wlm_stats_rsp(void *wma_ctx, uint8_t *event, uint32_t len);
 #endif /* FEATURE_WLM_STATS */
 
-#ifndef ROAM_OFFLOAD_V1
-/**
- * wma_update_roam_offload_flag() -  update roam offload flag to fw
- * @wma:     wma handle
- * @params: Roaming enable/disable params
- *
- * Return: none
- */
-void wma_update_roam_offload_flag(void *handle,
-				  struct roam_init_params *params);
-/**
- * wma_set_roam_disable_cfg() - Set roam module disable cfg to fw
- * @wma: wma handle
- * @params: Roaming module enable/disable params
- *
- * Return: none
- */
-void wma_set_roam_disable_cfg(void *handle, struct roam_disable_cfg *params);
-#endif
-
 /**
  * wma_self_peer_create() - create self peer in objmgr
  * @vdev_mlme: vdev mlme component private object
@@ -848,5 +837,15 @@ QDF_STATUS wma_vdev_self_peer_create(struct vdev_mlme_obj *vdev_mlme);
  * Return: None
  */
 void wma_cleanup_vdev(struct wlan_objmgr_vdev *vdev);
+
+/**
+ * wma_set_wakeup_logs_to_console() - Enable/disable wakeup logs to console
+ * @value: boolean value
+ *
+ * API to enable/disable wow host wakeup event logs to console.
+ *
+ * Return: None
+ */
+void wma_set_wakeup_logs_to_console(bool value);
 
 #endif /* WMA_API_H */

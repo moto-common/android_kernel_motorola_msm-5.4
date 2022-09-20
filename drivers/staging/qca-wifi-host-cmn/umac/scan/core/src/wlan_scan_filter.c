@@ -570,15 +570,15 @@ static bool scm_is_fils_config_match(struct scan_filter *filter,
 	data = indication_ie->variable_data;
 
 	if (indication_ie->is_cache_id_present &&
-	    (data + CACHE_IDENTIFIER_LEN) < end_ptr)
+	    (data + CACHE_IDENTIFIER_LEN) <= end_ptr)
 		data += CACHE_IDENTIFIER_LEN;
 
 	if (indication_ie->is_hessid_present &&
-	    (data + HESSID_LEN) < end_ptr)
+	    (data + HESSID_LEN) <= end_ptr)
 		data += HESSID_LEN;
 
 	for (i = 1; i <= indication_ie->realm_identifiers_cnt &&
-	     (data + REAM_HASH_LEN) < end_ptr; i++) {
+	     (data + REAM_HASH_LEN) <= end_ptr; i++) {
 		if (!qdf_mem_cmp(filter->fils_scan_filter.fils_realm,
 				 data, REAM_HASH_LEN))
 			return true;
@@ -716,8 +716,18 @@ bool scm_filter_match(struct wlan_objmgr_psoc *psoc,
 		}
 	}
 
-	if (!match && filter->num_of_channels)
+	if (!match && filter->num_of_channels) {
+		/*
+		 * Do not print if bssid/ssid is not present in filter to avoid
+		 * excessive prints (e.g RRM case where only freq list is
+		 * provided to get AP's in specific frequencies)
+		 */
+		if (filter->num_of_bssid || filter->num_of_ssid)
+			scm_debug(QDF_MAC_ADDR_FMT" : Ignore as AP's freq %d is not in freq list",
+				  QDF_MAC_ADDR_REF(db_entry->bssid.bytes),
+				  db_entry->channel.chan_freq);
 		return false;
+	}
 
 	if (filter->rrm_measurement_filter)
 		return true;

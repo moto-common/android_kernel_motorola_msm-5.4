@@ -617,12 +617,7 @@ static void csr_roam_restore_default_config(struct mac_context *mac_ctx,
 	triggers.vdev_id = vdev_id;
 	triggers.trigger_bitmap = wlan_mlme_get_roaming_triggers(mac_ctx->psoc);
 	sme_debug("Reset roam trigger bitmap to 0x%x", triggers.trigger_bitmap);
-#ifdef ROAM_OFFLOAD_V1
 	wlan_cm_rso_set_roam_trigger(mac_ctx->pdev, vdev_id, &triggers);
-#else
-	/* temp change, This will be removed with ROAM_OFFLOAD_V1 enabled */
-	sme_set_roam_triggers(MAC_HANDLE(mac_ctx), &triggers);
-#endif
 	sme_roam_control_restore_default_config(MAC_HANDLE(mac_ctx),
 						vdev_id);
 }
@@ -794,6 +789,27 @@ static void csr_neighbor_roam_info_ctx_init(struct mac_context *mac,
 	struct cm_roam_values_copy src_cfg;
 	struct csr_roam_session *session = &mac->roam.roamSession[session_id];
 	int init_ft_flag = false;
+	struct wlan_objmgr_vdev *vdev = NULL;
+	struct vdev_mlme_obj *vdev_mlme;
+
+	vdev = wlan_objmgr_get_vdev_by_id_from_psoc(mac->psoc, session_id,
+						    WLAN_LEGACY_SME_ID);
+	if (!vdev)
+		return;
+
+	vdev_mlme = wlan_vdev_mlme_get_cmpt_obj(vdev);
+	if (!vdev_mlme) {
+		wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_SME_ID);
+		QDF_BUG(0);
+		return;
+	}
+
+	/* update the EXT cap IE with union of driver populated
+	 * values and the values sent from userspace
+	 */
+	csr_send_set_ie(vdev_mlme->mgmt.generic.type,
+			vdev_mlme->mgmt.generic.subtype, session_id);
+	wlan_objmgr_vdev_release_ref(vdev, WLAN_LEGACY_SME_ID);
 
 	csr_init_occupied_channels_list(mac, session_id);
 	csr_neighbor_roam_state_transition(mac,
@@ -1273,7 +1289,6 @@ bool csr_neighbor_middle_of_roaming(struct mac_context *mac, uint8_t sessionId)
 	return val;
 }
 
-#ifdef ROAM_OFFLOAD_V1
 bool
 wlan_cm_neighbor_roam_in_progress(struct wlan_objmgr_psoc *psoc,
 				  uint8_t vdev_id)
@@ -1295,7 +1310,6 @@ wlan_cm_neighbor_roam_in_progress(struct wlan_objmgr_psoc *psoc,
 
 	return csr_neighbor_middle_of_roaming(mac_ctx, vdev_id);
 }
-#endif
 
 /**
  * csr_neighbor_roam_process_handoff_req - Processes handoff request
