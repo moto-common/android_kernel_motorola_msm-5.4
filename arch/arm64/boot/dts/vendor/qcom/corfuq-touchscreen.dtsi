@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se0_spi {
+	status = "disabled";
+};
+
+&qupv3_se0_i2c {
+	status = "ok";
+
+	focaltech@38{
+		compatible = "focaltech,fts";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <22 0x2008>;
+		focaltech,reset-gpio = <&tlmm 21 0x00>;
+		focaltech,irq-gpio = <&tlmm 22 0x2008>;
+		focaltech,max-touch-number = <10>;
+		focaltech,display-coords = <0 0 1080 2400>;
+		vdd-supply = <&L22A>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend",
+			"pmx_ts_release";
+		pinctrl-0 = <&ts_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&pmx_ts_release>;
+		panel = <&dsi_vtdr6110c_visionox_video>;
+		mmi,status = "/chosen","mmi,panel_name","contains","vtdr6110c";
+
+		/* touchscreen_mmi class entries*/
+		mmi,enable-gestures;
+		mmi,usb-charger-detection;
+		mmi,class-entry-name = "ft3519";
+		mmi,reset-on-resume = <0x01>;
+	};
+
+	goodix-gtx8@5d {
+		compatible = "goodix,gt9885";
+
+		goodix,avdd-name = "avdd";
+		avdd-supply = <&L22A>;
+		goodix,iovdd-name = "iovdd";
+		iovdd-supply = <&L13A>;
+
+		reg = <0x5d>;
+		mmi,status = "/chosen","mmi,panel_name","contains","rm692c9";
+		goodix,reset-gpio = <&tlmm 21 0x00>;
+		goodix,irq-gpio = <&tlmm 22 0x2008>;
+		goodix,irq-flags = <2>; /* 1:trigger rising, 2:trigger falling;*/
+		goodix,panel-max-x = <1080>;
+		goodix,panel-max-y = <2400>;
+		goodix,panel-max-w = <255>;
+		panel = <&dsi_rm692c9_visionox_video>;
+
+		/* touchscreen_mmi class entries*/
+		mmi,enable-gestures;
+		mmi,usb-charger-detection;
+		mmi,class-entry-name = "gt9885";
+	};
+};
