@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 - 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012 - 2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -51,16 +51,18 @@
 /**
  * enum wlan_fwol_southbound_event - fw offload south bound event type
  * @WLAN_FWOL_EVT_GET_ELNA_BYPASS_RESPONSE: get eLNA bypass response
+ * @WLAN_FWOL_EVT_GET_THERMAL_STATS_RESPONSE: get Thermal Stats response
  */
 enum wlan_fwol_southbound_event {
 	WLAN_FWOL_EVT_INVALID = 0,
 	WLAN_FWOL_EVT_GET_ELNA_BYPASS_RESPONSE,
+	WLAN_FWOL_EVT_GET_THERMAL_STATS_RESPONSE,
 	WLAN_FWOL_EVT_LAST,
 	WLAN_FWOL_EVT_MAX = WLAN_FWOL_EVT_LAST - 1
 };
 
 /**
- * struct wlan_fwol_three_antenna_btc - Three antenna BTC config items
+ * struct wlan_fwol_coex_config - BTC config items
  * @btc_mode: Config BTC mode
  * @antenna_isolation: Antenna isolation
  * @max_tx_power_for_btc: Max wlan tx power in co-ex scenario
@@ -77,6 +79,8 @@ enum wlan_fwol_southbound_event {
  *                             BT SCO connection is on
  * @btc_three_way_coex_config_legacy_enable: Enable/Disable tri-radio coex
  *                             config legacy feature
+ * @ble_scan_coex_policy: BLE Scan policy, true - better BLE scan result, false
+ *                        better wlan throughput
  */
 struct wlan_fwol_coex_config {
 	uint8_t btc_mode;
@@ -97,6 +101,7 @@ struct wlan_fwol_coex_config {
 #ifdef FEATURE_COEX_CONFIG
 	bool    btc_three_way_coex_config_legacy_enable;
 #endif
+	bool ble_scan_coex_policy;
 };
 
 #define FWOL_THERMAL_LEVEL_MAX 4
@@ -113,6 +118,7 @@ struct wlan_fwol_coex_config {
  * @priority_apps: Priority of the apps mitigation to consider by fw
  * @priority_wpps: Priority of the wpps mitigation to consider by fw
  * @thermal_action: thermal action as defined enum thermal_mgmt_action_code
+ * @therm_stats_offset: thermal temp offset as set in gThermalStatsTempOffset
  */
 struct wlan_fwol_thermal_temp {
 	bool     thermal_mitigation_enable;
@@ -125,6 +131,9 @@ struct wlan_fwol_thermal_temp {
 	uint8_t priority_apps;
 	uint8_t priority_wpps;
 	enum thermal_mgmt_action_code thermal_action;
+#ifdef THERMAL_STATS_SUPPORT
+	uint8_t therm_stats_offset;
+#endif
 };
 
 /**
@@ -268,8 +277,18 @@ struct wlan_fwol_cfg {
 	uint32_t dhcp_max_num_clients;
 #endif
 	struct adaptive_dwelltime_params dwelltime_params;
-	bool enable_ilp;
+	uint32_t enable_ilp;
 	bool disable_hw_assist;
+};
+
+/**
+ * struct wlan_fwol_capability_info - FW offload capability component
+ * @fw_thermal_stats_cap: Thermal Stats Fw capability
+ **/
+struct wlan_fwol_capability_info {
+#ifdef THERMAL_STATS_SUPPORT
+	bool fw_thermal_stats_cap;
+#endif
 };
 
 /**
@@ -278,12 +297,14 @@ struct wlan_fwol_cfg {
  * @cbs:     callback functions
  * @tx_ops: tx operations for target interface
  * @rx_ops: rx operations for target interface
+ * @capability_info: fwol capability info
  */
 struct wlan_fwol_psoc_obj {
 	struct wlan_fwol_cfg cfg;
 	struct wlan_fwol_callbacks cbs;
 	struct wlan_fwol_tx_ops tx_ops;
 	struct wlan_fwol_rx_ops rx_ops;
+	struct wlan_fwol_capability_info capability_info;
 };
 
 /**
@@ -291,6 +312,7 @@ struct wlan_fwol_psoc_obj {
  * @psoc: psoc handle
  * @event_id: event ID
  * @get_elna_bypass_response: get eLNA bypass response
+ * @get_thermal_stats_response: get thermal stats response
  */
 struct wlan_fwol_rx_event {
 	struct wlan_objmgr_psoc *psoc;
@@ -298,6 +320,9 @@ struct wlan_fwol_rx_event {
 	union {
 #ifdef WLAN_FEATURE_ELNA
 		struct get_elna_bypass_response get_elna_bypass_response;
+#endif
+#ifdef THERMAL_STATS_SUPPORT
+		struct thermal_throttle_info get_thermal_stats_response;
 #endif
 	};
 };
@@ -385,12 +410,13 @@ fwol_set_adaptive_dwelltime_config(
 /**
  * fwol_set_ilp_config() - API to set ILP HW block config
  * @pdev: pointer to the pdev object
- * @enable_ilp: enable/disable config for ILP
+ * @enable_ilp: ILP HW block configuration with various options
  *
  * Return: QDF_STATUS
  */
 QDF_STATUS fwol_set_ilp_config(struct wlan_objmgr_pdev *pdev,
-			       bool enable_ilp);
+			       uint32_t enable_ilp);
+
 /**
  * fwol_configure_hw_assist() - API to configure HW assist feature in FW
  * @pdev: pointer to the pdev object

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -32,6 +33,7 @@
 #include "wlan_mgmt_txrx_utils_api.h"
 #include <wlan_dfs_public_struct.h>
 #include <wlan_crypto_global_def.h>
+#include "wlan_thermal_public_struct.h"
 #ifdef WLAN_POWER_MANAGEMENT_OFFLOAD
 #include "wmi_unified_pmo_api.h"
 #endif
@@ -365,6 +367,7 @@ static inline int wmi_process_qmi_fw_event(void *wmi_cb_ctx, void *buf, int len)
  * @buf: wmi command buffer
  * @buflen: wmi command buffer length
  * @cmd_id: WMI cmd id
+ * @is_qmi_send_support:send by qmi is supported
  *
  * Note, it is NOT safe to access buf after calling this function!
  *
@@ -372,7 +375,8 @@ static inline int wmi_process_qmi_fw_event(void *wmi_cb_ctx, void *buf, int len)
  */
 QDF_STATUS wmi_unified_cmd_send_pm_chk(struct wmi_unified *wmi_handle,
 				       wmi_buf_t buf, uint32_t buflen,
-				       uint32_t cmd_id);
+				       uint32_t cmd_id,
+				       bool is_qmi_send_support);
 
 /**
  * wmi_unified_register_event() - WMI event handler
@@ -857,6 +861,26 @@ wmi_unified_vdev_set_nac_rssi_send(wmi_unified_t wmi_handle,
 QDF_STATUS
 wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle,
 				struct vdev_set_params *param);
+
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+/**
+ * wmi_unified_roam_set_param_send() - WMI roam set parameter function
+ * @wmi_handle: handle to WMI.
+ * @roam_param: pointer to hold roam set parameter
+ *
+ * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
+ */
+QDF_STATUS
+wmi_unified_roam_set_param_send(wmi_unified_t wmi_handle,
+				struct vdev_set_params *roam_param);
+#else
+static inline QDF_STATUS
+wmi_unified_roam_set_param_send(wmi_unified_t wmi_handle,
+				struct vdev_set_params *roam_param)
+{
+	return QDF_STATUS_SUCCESS;
+}
+#endif
 
 /**
  * wmi_unified_sifs_trigger_send() - WMI vdev sifs trigger parameter function
@@ -1493,14 +1517,12 @@ QDF_STATUS wmi_unified_process_ll_stats_get_cmd(wmi_unified_t wmi_handle,
  *                                              get station request
  * @wmi_handle: wmi handle
  * @get_req: unified ll stats and get station request command params
- * @is_always_over_qmi: flag to send stats request always over qmi
  *
  * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_process_unified_ll_stats_get_sta_cmd(
 				wmi_unified_t wmi_handle,
-				const struct ll_stats_get_params *get_req,
-				bool is_always_over_qmi);
+				const struct ll_stats_get_params *get_req);
 #endif /* FEATURE_CLUB_LL_STATS_AND_GET_STATION */
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
@@ -2967,13 +2989,19 @@ wmi_extract_chan_stats(wmi_unified_t wmi_handle, void *evt_buf,
  * @wmi_handle: wmi handle
  * @evt_buf: Pointer to event buffer
  * @temp: Pointer to hold extracted temperature
- * @level: Pointer to hold extracted level
+ * @level: Pointer to hold extracted level in host enum
+ * @therm_throt_levels: Pointer to hold extracted number of level in thermal
+ *                      stats
+ * @tt_lvl_stats_event: Pointer to hold extracted thermal stats for each level
  * @pdev_id: Pointer to hold extracted pdev_id
  *
  * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
  */
 QDF_STATUS wmi_extract_thermal_stats(wmi_unified_t wmi_handle, void *evt_buf,
-				     uint32_t *temp, uint32_t *level,
+				     uint32_t *temp,
+				     enum thermal_throttle_level *level,
+				     uint32_t *therm_throt_levels,
+				     struct thermal_throt_level_stats *tt_stats,
 				     uint32_t *pdev_id);
 
 /**
@@ -4130,6 +4158,20 @@ wmi_unified_extract_vdev_mgmt_offload_event(wmi_unified_t wmi, void *evt_buf,
 				struct mgmt_offload_event_params *params);
 #endif
 
+#ifdef WLAN_FEATURE_PKT_CAPTURE_V2
+/**
+ * wmi_unified_extract_smart_monitor_event() - Extract smu event params
+ * @wmi: WMI handle
+ * @evt_buf: Event buffer
+ * @params: Smart monitor event params
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wmi_unified_extract_smart_monitor_event(wmi_unified_t wmi, void *evt_buf,
+					struct smu_event_params *params);
+#endif
+
 #ifdef FEATURE_WLAN_TIME_SYNC_FTM
 /**
  * wmi_unified_send_wlan_time_sync_ftm_trigger() - send ftm timesync trigger cmd
@@ -4218,23 +4260,6 @@ wmi_unified_send_injector_frame_config_cmd(wmi_unified_t wmi_handle,
 QDF_STATUS wmi_unified_send_cp_stats_cmd(wmi_unified_t wmi_handle,
 					 void *buf_ptr, uint32_t buf_len);
 
-#ifdef WLAN_SUPPORT_INFRA_CTRL_PATH_STATS
-/**
- * wmi_unified_extract_infra_cp_stats() - extract various infra cp statistics
- * @wmi_handle: wmi handle
- * @evt_buf: event buffer
- * @evt_buf_len: length of event buffer
- * @params: pointer to store the extracted event info
- *
- * This function extracts the infra cp statistics from the event
- *
- * Return: QDF_STATUS_SUCCESS on success and QDF_STATUS_E_FAILURE for failure
- */
-QDF_STATUS
-wmi_unified_extract_infra_cp_stats(wmi_unified_t wmi_handle,
-				   void *evt_buf, uint32_t evt_buf_len,
-				   struct infra_cp_stats_event *params);
-#endif /* WLAN_SUPPORT_INFRA_CTRL_PATH_STATS */
 
 /**
  * wmi_unified_extract_cp_stats_more_pending() - extract more flag

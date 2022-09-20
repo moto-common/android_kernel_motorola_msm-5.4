@@ -46,6 +46,7 @@ void reg_init_pdev_mas_chan_list(
 		struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj,
 		struct mas_chan_params *mas_chan_params);
 
+#ifdef CONFIG_REG_CLIENT
 /**
  * reg_save_reg_rules_to_pdev() - Save psoc reg-rules to pdev.
  * @pdev_priv_obj: Pointer to regdb pdev private object.
@@ -53,6 +54,13 @@ void reg_init_pdev_mas_chan_list(
 void reg_save_reg_rules_to_pdev(
 		struct reg_rule_info *psoc_reg_rules,
 		struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj);
+#else
+static inline void
+reg_save_reg_rules_to_pdev(struct reg_rule_info *psoc_reg_rules,
+			   struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj)
+{
+}
+#endif
 
 /**
  * reg_compute_pdev_current_chan_list() - Compute pdev current channel list.
@@ -90,8 +98,29 @@ reg_process_master_chan_list_ext(struct cur_regulatory_info *reg_info);
  */
 QDF_STATUS reg_process_master_chan_list(struct cur_regulatory_info *reg_info);
 
+/**
+ * reg_get_current_chan_list() - provide the pdev current channel list
+ * @pdev: pdev pointer
+ * @chan_list: channel list pointer
+ *
+ * Return: QDF_STATUS
+ */
 QDF_STATUS reg_get_current_chan_list(struct wlan_objmgr_pdev *pdev,
 				     struct regulatory_channel *chan_list);
+
+#ifdef CONFIG_REG_CLIENT
+/**
+ * reg_get_secondary_current_chan_list() - provide the pdev secondary current
+ * channel list
+ * @pdev: pdev pointer
+ * @chan_list: channel list pointer
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+reg_get_secondary_current_chan_list(struct wlan_objmgr_pdev *pdev,
+				    struct regulatory_channel *chan_list);
+#endif
 
 /**
  * reg_update_nol_history_ch() - Set nol-history flag for the channels in the

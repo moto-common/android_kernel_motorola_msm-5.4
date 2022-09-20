@@ -563,11 +563,29 @@ dp_rx_cookie_check_and_invalidate(hal_ring_desc_t ring_desc)
 	HAL_RX_REO_BUF_COOKIE_INVALID_SET(ring_desc);
 	return QDF_STATUS_SUCCESS;
 }
+
+/**
+ * dp_rx_cookie_reset_invalid_bit() - Reset the invalid bit of the cookie
+ *  field in ring descriptor
+ * @ring_desc: ring descriptor
+ *
+ * Return: None
+ */
+static inline void
+dp_rx_cookie_reset_invalid_bit(hal_ring_desc_t ring_desc)
+{
+	HAL_RX_REO_BUF_COOKIE_INVALID_RESET(ring_desc);
+}
 #else
 static inline QDF_STATUS
 dp_rx_cookie_check_and_invalidate(hal_ring_desc_t ring_desc)
 {
 	return QDF_STATUS_SUCCESS;
+}
+
+static inline void
+dp_rx_cookie_reset_invalid_bit(hal_ring_desc_t ring_desc)
+{
 }
 #endif
 
@@ -658,6 +676,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 /**
  * dp_rx_sg_create() - create a frag_list for MSDUs which are spread across
  *		     multiple nbufs.
+ * @soc: core txrx main context
  * @nbuf: pointer to the first msdu of an amsdu.
  *
  * This function implements the creation of RX frag_list for cases
@@ -665,7 +684,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
  *
  * Return: returns the head nbuf which contains complete frag_list.
  */
-qdf_nbuf_t dp_rx_sg_create(qdf_nbuf_t nbuf);
+qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf);
 
 
 /*
@@ -728,21 +747,7 @@ void dp_rx_desc_pool_free(struct dp_soc *soc,
 void dp_rx_deliver_raw(struct dp_vdev *vdev, qdf_nbuf_t nbuf_list,
 				struct dp_peer *peer);
 
-#ifdef RX_DESC_DEBUG_CHECK
-/**
- * dp_rx_desc_paddr_sanity_check() - paddr sanity for ring desc vs rx_desc
- * @rx_desc: rx descriptor
- * @ring_paddr: paddr obatined from the ring
- *
- * Returns: QDF_STATUS
- */
-static inline
-bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
-				   uint64_t ring_paddr)
-{
-	return (ring_paddr == qdf_nbuf_get_frag_paddr(rx_desc->nbuf, 0));
-}
-
+#ifdef RX_DESC_LOGGING
 /*
  * dp_rx_desc_alloc_dbg_info() - Alloc memory for rx descriptor debug
  *  structure
@@ -801,13 +806,6 @@ void dp_rx_desc_update_dbg_info(struct dp_rx_desc *rx_desc,
 #else
 
 static inline
-bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
-				   uint64_t ring_paddr)
-{
-	return true;
-}
-
-static inline
 void dp_rx_desc_alloc_dbg_info(struct dp_rx_desc *rx_desc)
 {
 }
@@ -822,7 +820,7 @@ void dp_rx_desc_update_dbg_info(struct dp_rx_desc *rx_desc,
 				const char *func_name, uint8_t flag)
 {
 }
-#endif /* RX_DESC_DEBUG_CHECK */
+#endif /* RX_DESC_LOGGING */
 
 /**
  * dp_rx_add_to_free_desc_list() - Adds to a local free descriptor list
@@ -1161,6 +1159,23 @@ dp_rx_update_protocol_tag(struct dp_soc *soc, struct dp_vdev *vdev,
 			  bool is_reo_exception, bool is_update_stats)
 {
 }
+
+/**
+ * dp_rx_err_cce_drop() - Reads CCE metadata from the RX MSDU end TLV
+ *                        and returns whether cce metadata matches
+ * @soc: core txrx main context
+ * @vdev: vdev on which the packet is received
+ * @nbuf: QDF pkt buffer on which the protocol tag should be set
+ * @rx_tlv_hdr: rBbase address where the RX TLVs starts
+ * Return: bool
+ */
+static inline bool
+dp_rx_err_cce_drop(struct dp_soc *soc, struct dp_vdev *vdev,
+		   qdf_nbuf_t nbuf, uint8_t *rx_tlv_hdr)
+{
+	return false;
+}
+
 #endif /* WLAN_SUPPORT_RX_PROTOCOL_TYPE_TAG */
 
 #ifndef WLAN_SUPPORT_RX_FLOW_TAG
@@ -1378,6 +1393,20 @@ void dp_rx_desc_frag_prep(struct dp_rx_desc *rx_desc,
 {
 }
 #endif /* DP_RX_MON_MEM_FRAG */
+
+/**
+ * dp_rx_desc_paddr_sanity_check() - paddr sanity for ring desc vs rx_desc
+ * @rx_desc: rx descriptor
+ * @ring_paddr: paddr obatined from the ring
+ *
+ * Returns: QDF_STATUS
+ */
+static inline
+bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
+				   uint64_t ring_paddr)
+{
+	return (ring_paddr == qdf_nbuf_get_frag_paddr(rx_desc->nbuf, 0));
+}
 #else
 
 static inline bool dp_rx_desc_check_magic(struct dp_rx_desc *rx_desc)
@@ -1411,6 +1440,12 @@ void dp_rx_desc_frag_prep(struct dp_rx_desc *rx_desc,
 }
 #endif /* DP_RX_MON_MEM_FRAG */
 
+static inline
+bool dp_rx_desc_paddr_sanity_check(struct dp_rx_desc *rx_desc,
+				   uint64_t ring_paddr)
+{
+	return true;
+}
 #endif /* RX_DESC_DEBUG_CHECK */
 
 void dp_rx_enable_mon_dest_frag(struct rx_desc_pool *rx_desc_pool,
@@ -1572,7 +1607,7 @@ void dp_rx_link_desc_refill_duplicate_check(
 				struct hal_buf_info *buf_info,
 				hal_buff_addrinfo_t ring_buf_info);
 
-#ifdef WLAN_FEATURE_PKT_CAPTURE_LITHIUM
+#ifdef WLAN_FEATURE_PKT_CAPTURE_V2
 /**
  * dp_rx_deliver_to_pkt_capture() - deliver rx packet to packet capture
  * @soc : dp_soc handle

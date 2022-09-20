@@ -76,6 +76,8 @@
 #include <wlan_hdd_sysfs_dp_aggregation.h>
 #include <wlan_hdd_sysfs_dl_modes.h>
 #include <wlan_hdd_sysfs_swlm.h>
+#include <wlan_hdd_sysfs_dump_in_progress.h>
+#include "wma_api.h"
 
 #define MAX_PSOC_ID_SIZE 10
 
@@ -89,6 +91,7 @@ static struct kobject *wlan_kobject;
 static struct kobject *driver_kobject;
 static struct kobject *fw_kobject;
 static struct kobject *psoc_kobject;
+static struct kobject *wifi_kobject;
 
 int
 hdd_sysfs_validate_and_copy_buf(char *dest_buf, size_t dest_buf_size,
@@ -561,6 +564,23 @@ static void hdd_sysfs_destroy_version_interface(void)
 	}
 }
 
+static void hdd_sysfs_create_wifi_root_obj(void)
+{
+	wifi_kobject = kobject_create_and_add("wifi", NULL);
+	if (!wifi_kobject)
+		hdd_err("could not allocate wifi kobject");
+}
+
+static void hdd_sysfs_destroy_wifi_root_obj(void)
+{
+	if (!wifi_kobject) {
+		hdd_err("could not get wifi kobject!");
+		return;
+	}
+	kobject_put(wifi_kobject);
+	wifi_kobject = NULL;
+}
+
 #ifdef WLAN_POWER_DEBUG
 static void hdd_sysfs_create_powerstats_interface(void)
 {
@@ -593,6 +613,63 @@ static void hdd_sysfs_destroy_powerstats_interface(void)
 {
 }
 #endif
+
+static ssize_t
+hdd_sysfs_wakeup_logs_to_console_store(struct kobject *kobj,
+				       struct kobj_attribute *attr,
+				       char const *buf, size_t count)
+{
+	char buf_local[MAX_SYSFS_USER_COMMAND_SIZE_LENGTH + 1];
+	int ret, value;
+	char *sptr, *token;
+
+	ret = hdd_sysfs_validate_and_copy_buf(buf_local, sizeof(buf_local),
+					      buf, count);
+	if (ret) {
+		hdd_err_rl("invalid input");
+		return ret;
+	}
+
+	sptr = buf_local;
+	token = strsep(&sptr, " ");
+	if (!token)
+		return -EINVAL;
+	if (kstrtou32(token, 0, &value))
+		return -EINVAL;
+
+	wma_set_wakeup_logs_to_console(value);
+
+	return count;
+}
+
+static struct kobj_attribute wakeup_logs_to_console_attribute =
+	__ATTR(wakeup_logs_to_console, 0220, NULL,
+	       hdd_sysfs_wakeup_logs_to_console_store);
+
+static void hdd_sysfs_create_wakeup_logs_to_console(void)
+{
+	int error;
+
+	if (!driver_kobject) {
+		hdd_err("could not get driver kobject!");
+		return;
+	}
+
+	error = sysfs_create_file(driver_kobject,
+				  &wakeup_logs_to_console_attribute.attr);
+	if (error)
+		hdd_err("could not create power_stats sysfs file");
+}
+
+static void hdd_sysfs_destroy_wakeup_logs_to_console(void)
+{
+	if (!driver_kobject) {
+		hdd_err("could not get driver kobject!");
+		return;
+	}
+	sysfs_remove_file(driver_kobject,
+			  &wakeup_logs_to_console_attribute.attr);
+}
 
 static void hdd_sysfs_create_driver_root_obj(void)
 {
@@ -769,8 +846,10 @@ void hdd_create_sysfs_files(struct hdd_context *hdd_ctx)
 	hdd_sysfs_create_driver_root_obj();
 	hdd_sysfs_create_version_interface(hdd_ctx->psoc);
 	hdd_sysfs_mem_stats_create(wlan_kobject);
+	hdd_sysfs_create_wifi_root_obj();
 	if  (QDF_GLOBAL_MISSION_MODE == hdd_get_conparam()) {
 		hdd_sysfs_create_powerstats_interface();
+		hdd_sysfs_create_dump_in_progress_interface(wifi_kobject);
 		hdd_sysfs_fw_mode_config_create(driver_kobject);
 		hdd_sysfs_scan_disable_create(driver_kobject);
 		hdd_sysfs_wow_ito_create(driver_kobject);
@@ -784,12 +863,14 @@ void hdd_create_sysfs_files(struct hdd_context *hdd_ctx)
 		hdd_sysfs_pm_dbs_create(driver_kobject);
 		hdd_sysfs_dp_aggregation_create(driver_kobject);
 		hdd_sysfs_dp_swlm_create(driver_kobject);
+		hdd_sysfs_create_wakeup_logs_to_console();
 	}
 }
 
 void hdd_destroy_sysfs_files(void)
 {
 	if  (QDF_GLOBAL_MISSION_MODE == hdd_get_conparam()) {
+		hdd_sysfs_destroy_wakeup_logs_to_console();
 		hdd_sysfs_dp_swlm_destroy(driver_kobject);
 		hdd_sysfs_dp_aggregation_destroy(driver_kobject);
 		hdd_sysfs_pm_dbs_destroy(driver_kobject);
@@ -803,8 +884,10 @@ void hdd_destroy_sysfs_files(void)
 		hdd_sysfs_wow_ito_destroy(driver_kobject);
 		hdd_sysfs_scan_disable_destroy(driver_kobject);
 		hdd_sysfs_fw_mode_config_destroy(driver_kobject);
+		hdd_sysfs_destroy_dump_in_progress_interface(wifi_kobject);
 		hdd_sysfs_destroy_powerstats_interface();
 	}
+	hdd_sysfs_destroy_wifi_root_obj();
 	hdd_sysfs_mem_stats_destroy(wlan_kobject);
 	hdd_sysfs_destroy_version_interface();
 	hdd_sysfs_destroy_driver_root_obj();

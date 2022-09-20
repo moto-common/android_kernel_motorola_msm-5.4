@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -106,9 +107,11 @@ struct cds_hang_event_fixed_param {
 static inline int
 cds_send_delba(struct cdp_ctrl_objmgr_psoc *psoc,
 	       uint8_t vdev_id, uint8_t *peer_macaddr,
-	       uint8_t tid, uint8_t reason_code)
+	       uint8_t tid, uint8_t reason_code,
+	       uint8_t cdp_reason_code)
 {
-	return wma_dp_send_delba_ind(vdev_id, peer_macaddr, tid, reason_code);
+	return wma_dp_send_delba_ind(vdev_id, peer_macaddr, tid,
+				     reason_code, cdp_reason_code);
 }
 
 static struct ol_if_ops  dp_ol_if_ops = {
@@ -248,6 +251,8 @@ QDF_STATUS cds_init(void)
 	qdf_register_self_recovery_callback(cds_trigger_recovery_psoc);
 	qdf_register_fw_down_callback(cds_is_fw_down);
 	qdf_register_is_driver_unloading_callback(cds_is_driver_unloading);
+	qdf_register_is_driver_state_module_stop_callback(
+					cds_is_driver_state_module_stop);
 	qdf_register_recovering_state_query_callback(cds_is_driver_recovering);
 	qdf_register_drv_connected_callback(cds_is_drv_connected);
 	qdf_register_drv_supported_callback(cds_is_drv_supported);
@@ -276,6 +281,7 @@ void cds_deinit(void)
 	qdf_register_recovering_state_query_callback(NULL);
 	qdf_register_fw_down_callback(NULL);
 	qdf_register_is_driver_unloading_callback(NULL);
+	qdf_register_is_driver_state_module_stop_callback(NULL);
 	qdf_register_self_recovery_callback(NULL);
 	qdf_register_wmi_send_recv_qmi_callback(NULL);
 
@@ -650,24 +656,18 @@ QDF_STATUS cds_open(struct wlan_objmgr_psoc *psoc)
 	/* Initialize bug reporting structure */
 	cds_init_log_completion();
 
-	status = qdf_event_create(&gp_cds_context->wma_complete_event);
-	if (QDF_IS_STATUS_ERROR(status)) {
-		cds_alert("Unable to init wma_complete_event");
-		return status;
-	}
-
 	hdd_ctx = gp_cds_context->hdd_context;
 	if (!hdd_ctx || !hdd_ctx->config) {
 		cds_err("Hdd Context is Null");
 
 		status = QDF_STATUS_E_FAILURE;
-		goto err_wma_complete_event;
+		return status;
 	}
 
 	status = dispatcher_enable();
 	if (QDF_IS_STATUS_ERROR(status)) {
 		cds_err("Failed to enable dispatcher; status:%d", status);
-		goto err_wma_complete_event;
+		return status;
 	}
 
 	/* Now Open the CDS Scheduler */
@@ -892,9 +892,6 @@ err_dispatcher_disable:
 	if (QDF_IS_STATUS_ERROR(dispatcher_disable()))
 		QDF_DEBUG_PANIC("Failed to disable dispatcher");
 
-err_wma_complete_event:
-	qdf_event_destroy(&gp_cds_context->wma_complete_event);
-
 	return status;
 } /* cds_open() */
 
@@ -1042,13 +1039,13 @@ QDF_STATUS cds_pre_enable(void)
 	status = wma_pre_start();
 	if (QDF_IS_STATUS_ERROR(status)) {
 		cds_err("Failed to WMA prestart");
-		return QDF_STATUS_E_FAILURE;
+		goto exit_pkt_log;
 	}
 
 	status = htc_start(gp_cds_context->htc_ctx);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		cds_err("Failed to Start HTC");
-		goto exit_with_status;
+		goto exit_pkt_log;
 	}
 
 	status = wma_wait_for_ready_event(gp_cds_context->wma_context);
@@ -1087,7 +1084,12 @@ stop_wmi:
 	htc_stop(gp_cds_context->htc_ctx);
 
 	wma_wmi_work_close();
-exit_with_status:
+
+exit_pkt_log:
+	if (QDF_GLOBAL_FTM_MODE != cds_get_conparam() &&
+	    QDF_GLOBAL_EPPING_MODE != cds_get_conparam())
+		cdp_pkt_log_exit(soc, OL_TXRX_PDEV_ID);
+
 	return status;
 }
 
@@ -1171,26 +1173,10 @@ err_mac_stop:
 	mac_stop(gp_cds_context->mac_context);
 
 err_wma_stop:
-	qdf_event_reset(&gp_cds_context->wma_complete_event);
 	qdf_status = wma_stop();
 	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
 		cds_err("Failed to stop wma");
 		QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
-		wma_setneedshutdown();
-	} else {
-		qdf_status =
-			qdf_wait_for_event_completion(
-					&gp_cds_context->wma_complete_event,
-					CDS_WMA_TIMEOUT);
-		if (qdf_status != QDF_STATUS_SUCCESS) {
-			if (qdf_status == QDF_STATUS_E_TIMEOUT) {
-				cds_alert("Timeout occurred before WMA_stop complete");
-			} else {
-				cds_alert("WMA_stop reporting other error");
-			}
-			QDF_ASSERT(0);
-			wma_setneedshutdown();
-		}
 	}
 
 	return QDF_STATUS_E_FAILURE;
@@ -1224,7 +1210,6 @@ QDF_STATUS cds_disable(struct wlan_objmgr_psoc *psoc)
 	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
 		cds_err("Failed to stop wma");
 		QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
-		wma_setneedshutdown();
 	}
 
 	handle = cds_get_context(QDF_MODULE_ID_PE);
@@ -1362,25 +1347,16 @@ QDF_STATUS cds_close(struct wlan_objmgr_psoc *psoc)
 	ucfg_pmo_psoc_update_dp_handle(psoc, NULL);
 	wlan_psoc_set_dp_handle(psoc, NULL);
 
-	if (true == wma_needshutdown()) {
-		cds_err("Failed to shutdown wma");
-	} else {
-		qdf_status = wma_close();
-		if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
-			cds_err("Failed to close wma");
-			QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
-		}
+
+	qdf_status = wma_close();
+	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
+		cds_err("Failed to close wma");
+		QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
 	}
 
 	qdf_status = wma_wmi_service_close();
 	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
 		cds_err("Failed to close wma_wmi_service");
-		QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
-	}
-
-	qdf_status = qdf_event_destroy(&gp_cds_context->wma_complete_event);
-	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
-		cds_err("failed to destroy wma_complete_event");
 		QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
 	}
 
@@ -2842,6 +2818,8 @@ cds_dp_get_vdev_stats(uint8_t vdev_id, struct cds_vdev_dp_stats *stats)
 
 	if (cds_get_cdp_vdev_stats(vdev_id, vdev_stats)) {
 		stats->tx_retries = vdev_stats->tx.retries;
+		stats->tx_mpdu_success_with_retries =
+			vdev_stats->tx.mpdu_success_with_retries;
 		ret = true;
 	}
 

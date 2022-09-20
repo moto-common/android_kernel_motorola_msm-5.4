@@ -22,7 +22,7 @@
 #ifdef FISA_DEBUG_ENABLE
 #define dp_fisa_debug dp_info
 #else
-#define dp_fisa_debug dp_debug
+#define dp_fisa_debug(params...)
 #endif
 
 #if defined(WLAN_SUPPORT_RX_FISA)
@@ -30,7 +30,6 @@
 #define FSE_CACHE_FLUSH_TIME_OUT	5 /* milliSeconds */
 #define FISA_UDP_MAX_DATA_LEN		1470 /* udp max data length */
 #define FISA_UDP_HDR_LEN		8 /* udp header length */
-#define FISA_FLOW_MAX_AGGR_COUNT        16 /* max flow aggregate count */
 /* single packet max cumulative ip length */
 #define FISA_MAX_SINGLE_CUMULATIVE_IP_LEN \
 	(FISA_UDP_MAX_DATA_LEN + FISA_UDP_HDR_LEN)

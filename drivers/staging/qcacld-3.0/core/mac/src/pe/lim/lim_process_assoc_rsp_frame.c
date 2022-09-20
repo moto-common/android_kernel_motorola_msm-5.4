@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -42,6 +43,8 @@
 #include "lim_send_messages.h"
 #include "lim_process_fils.h"
 #include "wlan_blm_api.h"
+#include "wlan_mlme_twt_api.h"
+#include "wlan_mlme_ucfg_api.h"
 
 /**
  * lim_update_stads_htcap() - Updates station Descriptor HT capability
@@ -185,9 +188,8 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 				vht_mcs_10_11_supp;
 	}
 
-	if (IS_DOT11_MODE_HE(session_entry->dot11mode))
-		lim_update_stads_he_caps(mac_ctx, sta_ds, assoc_rsp,
-					 session_entry, beacon);
+	lim_update_stads_he_caps(mac_ctx, sta_ds, assoc_rsp,
+				 session_entry, beacon);
 
 	if (lim_is_sta_he_capable(sta_ds))
 		he_cap = &assoc_rsp->he_cap;
@@ -222,6 +224,10 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 		if (assoc_rsp->edcaPresent) {
 			QDF_STATUS status;
 
+			qdf_mem_copy(&sta_ds->qos.peer_edca_params,
+				     &assoc_rsp->edca,
+				     sizeof(assoc_rsp->edca));
+
 			status =
 				sch_beacon_edca_process(mac_ctx,
 					&assoc_rsp->edca, session_entry);
@@ -241,6 +247,10 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 	sta_ds->wsmEnabled = 0;
 	if (session_entry->limWmeEnabled && assoc_rsp->wmeEdcaPresent) {
 		QDF_STATUS status;
+
+		qdf_mem_copy(&sta_ds->qos.peer_edca_params,
+			     &assoc_rsp->edca,
+			     sizeof(assoc_rsp->edca));
 
 		status = sch_beacon_edca_process(mac_ctx, &assoc_rsp->edca,
 				session_entry);
@@ -596,6 +606,88 @@ static void clean_up_ft_sha384(tpSirAssocRsp assoc_rsp, bool sha384_akm)
 }
 
 /**
+ * lim_get_iot_aggr_sz() - check and get IOT aggr size for configured OUI
+ *
+ * @mac_ctx: Pointer to Global MAC structure
+ * @ie_ptr: Pointer to starting IE in Beacon/Probe Response
+ * @ie_len: Length of all IEs combined
+ * @amsdu_sz: pointer to buffer to store AMSDU size
+ * @ampdu_sz: pointer to buffer to store AMPDU size
+ *
+ * This function is called to find configured vendor specific OUIs
+ * from the IEs in Beacon/Probe Response frames, if one of the OUI is
+ * present, get the configured aggr size for the OUI.
+ *
+ * Return: true if found, false otherwise.
+ */
+static bool
+lim_get_iot_aggr_sz(struct mac_context *mac, uint8_t *ie_ptr, uint32_t ie_len,
+		    uint32_t *amsdu_sz, uint32_t *ampdu_sz)
+{
+	const uint8_t *oui, *vendor_ie;
+	struct wlan_mlme_iot *iot;
+	uint32_t oui_len, aggr_num;
+	int i;
+
+	iot = &mac->mlme_cfg->iot;
+	aggr_num = iot->aggr_num;
+	if (!aggr_num)
+		return false;
+
+	for (i = 0; i < aggr_num; i++) {
+		oui = iot->aggr[i].oui;
+		oui_len = iot->aggr[i].oui_len;
+		vendor_ie = wlan_get_vendor_ie_ptr_from_oui(oui, oui_len,
+							    ie_ptr, ie_len);
+		if (!vendor_ie)
+			continue;
+
+		*amsdu_sz = iot->aggr[i].amsdu_sz;
+		*ampdu_sz = iot->aggr[i].ampdu_sz;
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * lim_update_iot_aggr_sz() - check and update IOT aggr size
+ *
+ * @mac_ctx: Pointer to Global MAC structure
+ * @ie_ptr: Pointer to starting IE in Beacon/Probe Response
+ * @ie_len: Length of all IEs combined
+ * @session_entry: A pointer to session entry
+ *
+ * This function is called to find configured vendor specific OUIs
+ * from the IEs in Beacon/Probe Response frames, and set the aggr
+ * size accordingly.
+ *
+ * Return: None
+ */
+static void
+lim_update_iot_aggr_sz(struct mac_context *mac_ctx, uint8_t *ie_ptr,
+		       uint32_t ie_len, struct pe_session *session_entry)
+{
+	int ret;
+	uint32_t amsdu_sz, ampdu_sz;
+	bool iot_hit;
+
+	if (!ie_ptr || !ie_len)
+		return;
+
+	iot_hit = lim_get_iot_aggr_sz(mac_ctx, ie_ptr, ie_len,
+				      &amsdu_sz, &ampdu_sz);
+	if (!iot_hit)
+		return;
+
+	pe_debug("Try to set iot amsdu size: %u", amsdu_sz);
+	ret = wma_cli_set_command(session_entry->smeSessionId,
+				  GEN_VDEV_PARAM_AMSDU, amsdu_sz, GEN_CMD);
+	if (ret)
+		pe_err("Failed to set iot amsdu size: %d", ret);
+}
+
+/**
  * lim_process_assoc_rsp_frame() - Processes assoc response
  * @mac_ctx: Pointer to Global MAC structure
  * @rx_packet_info    - A pointer to Rx packet info structure
@@ -614,7 +706,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 			    uint32_t reassoc_frame_len,
 			    uint8_t subtype, struct pe_session *session_entry)
 {
-	uint8_t *body;
+	uint8_t *body, *ie;
 	uint16_t caps, ie_len;
 	uint32_t frame_len;
 	tSirMacAddr current_bssid;
@@ -663,11 +755,11 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		return;
 	}
 
-	pe_nofl_info("Assoc rsp RX: subtype %d vdev %d sys role %d lim state %d rssi %d from " QDF_MAC_ADDR_FMT,
-		     subtype, vdev_id,
-		     GET_LIM_SYSTEM_ROLE(session_entry),
-		     session_entry->limMlmState, rssi,
-		     QDF_MAC_ADDR_REF(hdr->sa));
+	pe_nofl_rl_info("Assoc rsp RX: subtype %d vdev %d sys role %d lim state %d rssi %d from " QDF_MAC_ADDR_FMT,
+			subtype, vdev_id,
+			GET_LIM_SYSTEM_ROLE(session_entry),
+			session_entry->limMlmState, rssi,
+			QDF_MAC_ADDR_REF(hdr->sa));
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
 			   (uint8_t *)hdr, frame_len + SIR_MAC_HDR_LEN_3A);
 
@@ -914,6 +1006,13 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 		lim_update_obss_scanparams(session_entry,
 				&assoc_rsp->obss_scanparams);
 
+	if (lim_is_session_he_capable(session_entry))
+		mlme_set_twt_peer_capabilities(
+				mac_ctx->psoc,
+				(struct qdf_mac_addr *)current_bssid,
+				&assoc_rsp->he_cap,
+				&assoc_rsp->he_op);
+
 	lim_diag_event_report(mac_ctx, WLAN_PE_DIAG_ROAM_ASSOC_COMP_EVENT,
 			      session_entry,
 			      (assoc_rsp->status_code ? QDF_STATUS_E_FAILURE :
@@ -1028,6 +1127,7 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	}
 	pe_debug("Successfully Associated with BSS " QDF_MAC_ADDR_FMT,
 		 QDF_MAC_ADDR_REF(hdr->sa));
+
 #ifdef FEATURE_WLAN_ESE
 	if (session_entry->eseContext.tsm.tsmInfo.state)
 		session_entry->eseContext.tsm.tsmMetrics.RoamingCount = 0;
@@ -1068,9 +1168,10 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	 */
 	ie_len = lim_get_ielen_from_bss_description(
 		&session_entry->lim_join_req->bssDescription);
-	lim_extract_ap_capabilities(mac_ctx,
-		(uint8_t *)session_entry->lim_join_req->bssDescription.ieFields,
-		ie_len, beacon);
+	ie = (uint8_t *)session_entry->lim_join_req->bssDescription.ieFields;
+	lim_update_iot_aggr_sz(mac_ctx, ie, ie_len, session_entry);
+
+	lim_extract_ap_capabilities(mac_ctx, ie, ie_len, beacon);
 	lim_update_assoc_sta_datas(mac_ctx, sta_ds, assoc_rsp,
 				   session_entry, beacon);
 
@@ -1087,7 +1188,6 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 			session_entry->ap_mu_edca_params[QCA_WLAN_AC_VO] =
 				assoc_rsp->mu_edca.acvo;
 		}
-
 	}
 
 	if (beacon->VHTCaps.present)

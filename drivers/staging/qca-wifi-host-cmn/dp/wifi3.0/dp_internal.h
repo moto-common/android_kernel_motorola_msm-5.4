@@ -426,6 +426,7 @@ static inline void dp_wds_ext_peer_init(struct dp_peer *peer)
  * 2.4GHz band uses lmac_id = 1
  * 5GHz/6GHz band uses lmac_id=0
  */
+#define DP_INVALID_LMAC_ID	(-1)
 #define DP_MON_INVALID_LMAC_ID	(-1)
 #define DP_MON_2G_LMAC_ID	1
 #define DP_MON_5G_LMAC_ID	0
@@ -870,6 +871,8 @@ static inline void dp_update_vdev_stats(struct dp_soc *soc,
 	tgtobj->tx.dropped.fw_reason3 +=
 			srcobj->stats.tx.dropped.fw_reason3;
 	tgtobj->tx.dropped.age_out += srcobj->stats.tx.dropped.age_out;
+	tgtobj->tx.mpdu_success_with_retries +=
+			srcobj->stats.tx.mpdu_success_with_retries;
 	tgtobj->rx.err.mic_err += srcobj->stats.rx.err.mic_err;
 	if (srcobj->stats.rx.rssi != 0)
 		tgtobj->rx.rssi = srcobj->stats.rx.rssi;
@@ -1836,9 +1839,48 @@ void dp_peer_stats_update_protocol_cnt(struct cdp_soc_t *soc,
 
 #ifdef QCA_LL_TX_FLOW_CONTROL_V2
 void dp_tx_dump_flow_pool_info(struct cdp_soc_t *soc_hdl);
+
+/**
+ * dp_tx_dump_flow_pool_info_compact() - dump flow pool info
+ * @soc: DP soc context
+ *
+ * Return: none
+ */
+void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc);
 int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 	bool force);
+#else
+static inline void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc)
+{
+}
 #endif /* QCA_LL_TX_FLOW_CONTROL_V2 */
+
+#ifdef QCA_OL_DP_SRNG_LOCK_LESS_ACCESS
+static inline int
+dp_hal_srng_access_start(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
+{
+	return hal_srng_access_start_unlocked(soc, hal_ring_hdl);
+}
+
+static inline void
+dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
+{
+	hal_srng_access_end_unlocked(soc, hal_ring_hdl);
+}
+
+#else
+static inline int
+dp_hal_srng_access_start(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
+{
+	return hal_srng_access_start(soc, hal_ring_hdl);
+}
+
+static inline void
+dp_hal_srng_access_end(hal_soc_handle_t soc, hal_ring_handle_t hal_ring_hdl)
+{
+	hal_srng_access_end(soc, hal_ring_hdl);
+}
+#endif
 
 #ifdef WLAN_FEATURE_DP_EVENT_HISTORY
 /**
@@ -1864,14 +1906,13 @@ void dp_srng_access_end(struct dp_intr *int_ctx, struct dp_soc *dp_soc,
 			hal_ring_handle_t hal_ring_hdl);
 
 #else
-
 static inline int dp_srng_access_start(struct dp_intr *int_ctx,
 				       struct dp_soc *dp_soc,
 				       hal_ring_handle_t hal_ring_hdl)
 {
 	hal_soc_handle_t hal_soc = dp_soc->hal_soc;
 
-	return hal_srng_access_start(hal_soc, hal_ring_hdl);
+	return dp_hal_srng_access_start(hal_soc, hal_ring_hdl);
 }
 
 static inline void dp_srng_access_end(struct dp_intr *int_ctx,
@@ -1880,7 +1921,7 @@ static inline void dp_srng_access_end(struct dp_intr *int_ctx,
 {
 	hal_soc_handle_t hal_soc = dp_soc->hal_soc;
 
-	return hal_srng_access_end(hal_soc, hal_ring_hdl);
+	return dp_hal_srng_access_end(hal_soc, hal_ring_hdl);
 }
 #endif /* WLAN_FEATURE_DP_EVENT_HISTORY */
 
@@ -2284,11 +2325,13 @@ dp_get_pdev_from_soc_pdev_id_wifi3(struct dp_soc *soc,
  * @tid: TID
  * @ba_window_size: BlockAck window size
  * @start_seq: Starting sequence number
+ * @bar_update: BAR update triggered
  *
  * Return: QDF_STATUS code
  */
 QDF_STATUS dp_rx_tid_update_wifi3(struct dp_peer *peer, int tid, uint32_t
-					 ba_window_size, uint32_t start_seq);
+					 ba_window_size, uint32_t start_seq,
+					 bool bar_update);
 
 /**
  * dp_get_peer_mac_list(): function to get peer mac list of vdev
@@ -2702,4 +2745,15 @@ static inline QDF_STATUS dp_runtime_init(struct dp_soc *soc)
 }
 #endif
 
+/**
+ * dp_peer_flush_frags() - Flush all fragments for a particular
+ *  peer
+ * @soc_hdl - data path soc handle
+ * @vdev_id - vdev id
+ * @peer_addr - peer mac address
+ *
+ * Return: None
+ */
+void dp_peer_flush_frags(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			 uint8_t *peer_mac);
 #endif /* #ifndef _DP_INTERNAL_H_ */

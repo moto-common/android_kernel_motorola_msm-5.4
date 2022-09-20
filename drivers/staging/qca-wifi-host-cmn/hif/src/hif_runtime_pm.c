@@ -42,6 +42,8 @@
 #include "hif_exec.h"
 
 #ifdef FEATURE_RUNTIME_PM
+#define PREVENT_LIST_STRING_LEN 200
+
 /**
  * hif_pci_pm_runtime_enabled() - To check if Runtime PM is enabled
  * @scn: hif context
@@ -733,29 +735,49 @@ void hif_process_runtime_suspend_failure(struct hif_opaque_softc *hif_ctx)
 	hif_runtime_pm_set_state_on(scn);
 }
 
-static void hif_pm_runtime_print_prevent_list(struct hif_softc *scn)
-{
-	struct hif_runtime_pm_ctx *rpm_ctx = hif_bus_get_rpm_ctx(scn);
-	struct hif_pm_runtime_lock *ctx;
-
-	hif_info("prevent_suspend_cnt %u", rpm_ctx->prevent_suspend_cnt);
-	list_for_each_entry(ctx, &rpm_ctx->prevent_suspend_list, list)
-		hif_info("%s", ctx->name);
-}
-
 static bool hif_pm_runtime_is_suspend_allowed(struct hif_softc *scn)
 {
 	struct hif_runtime_pm_ctx *rpm_ctx = hif_bus_get_rpm_ctx(scn);
-	bool ret;
+	struct hif_pm_runtime_lock *ctx;
+	uint32_t prevent_suspend_cnt;
+	char *str_buf;
+	bool is_suspend_allowed;
+	int len = 0;
 
 	if (!scn->hif_config.enable_runtime_pm)
-		return 0;
+		return false;
+
+	str_buf = qdf_mem_malloc(PREVENT_LIST_STRING_LEN);
+	if (!str_buf)
+		return false;
 
 	spin_lock_bh(&rpm_ctx->runtime_lock);
-	ret = (rpm_ctx->prevent_suspend_cnt == 0);
+	prevent_suspend_cnt = rpm_ctx->prevent_suspend_cnt;
+	is_suspend_allowed = (prevent_suspend_cnt == 0);
+	if (!is_suspend_allowed) {
+		list_for_each_entry(ctx, &rpm_ctx->prevent_suspend_list, list)
+			len += qdf_scnprintf(str_buf + len,
+				PREVENT_LIST_STRING_LEN - len,
+				"%s ", ctx->name);
+	}
 	spin_unlock_bh(&rpm_ctx->runtime_lock);
 
-	return ret;
+	if (!is_suspend_allowed)
+		hif_info("prevent_suspend_cnt %u, prevent_list: %s",
+			 rpm_ctx->prevent_suspend_cnt, str_buf);
+
+	qdf_mem_free(str_buf);
+
+	return is_suspend_allowed;
+}
+
+void hif_print_runtime_pm_prevent_list(struct hif_opaque_softc *hif_ctx)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+
+	hif_pm_runtime_is_suspend_allowed(scn);
+
+	hif_info("Up_linkstate_vote %d", scn->linkstate_vote);
 }
 
 /**
@@ -783,7 +805,6 @@ int hif_pre_runtime_suspend(struct hif_opaque_softc *hif_ctx)
 	/* keep this after set suspending */
 	if (!hif_pm_runtime_is_suspend_allowed(scn)) {
 		hif_info("Runtime PM not allowed now");
-		hif_pm_runtime_print_prevent_list(scn);
 		return -EINVAL;
 	}
 
@@ -1196,7 +1217,7 @@ int hif_pm_runtime_get(struct hif_opaque_softc *hif_ctx,
 		if (ret > 0)
 			ret = 0;
 
-		if (ret)
+		if (ret < 0)
 			hif_pm_runtime_put(hif_ctx, rtpm_dbgid);
 
 		if (ret && ret != -EINPROGRESS) {
@@ -1789,4 +1810,69 @@ uint8_t hif_pm_get_link_state(struct hif_opaque_softc *hif_handle)
 
 	return qdf_atomic_read(&scn->pm_link_state);
 }
+
+/**
+ * hif_pm_runtime_update_stats() - API to update RTPM stats for HTC layer
+ * @scn: hif context
+ * @rtpm_dbgid: RTPM dbg_id
+ * @hif_pm_htc_stats: Stats category
+ *
+ * Return: void
+ */
+void hif_pm_runtime_update_stats(struct hif_opaque_softc *hif_ctx,
+				 wlan_rtpm_dbgid rtpm_dbgid,
+				 enum hif_pm_htc_stats stats)
+{
+	struct hif_softc *scn = HIF_GET_SOFTC(hif_ctx);
+	struct hif_runtime_pm_ctx *rpm_ctx;
+
+	if (rtpm_dbgid != RTPM_ID_HTC)
+		return;
+
+	if (!scn)
+		return;
+
+	if (!hif_pci_pm_runtime_enabled(scn))
+		return;
+
+	rpm_ctx = hif_bus_get_rpm_ctx(scn);
+	if (!rpm_ctx)
+		return;
+
+	switch (stats) {
+	case HIF_PM_HTC_STATS_GET_HTT_RESPONSE:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_get_htt_resp++;
+		break;
+	case HIF_PM_HTC_STATS_GET_HTT_NO_RESPONSE:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_get_htt_no_resp++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTT_RESPONSE:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htt_resp++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTT_NO_RESPONSE:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htt_no_resp++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTT_ERROR:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htt_error++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTC_CLEANUP:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htc_cleanup++;
+		break;
+	case HIF_PM_HTC_STATS_GET_HTC_KICK_QUEUES:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_get_htc_kick_queues++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTC_KICK_QUEUES:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htc_kick_queues++;
+		break;
+	case HIF_PM_HTC_STATS_GET_HTT_FETCH_PKTS:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_get_htt_fetch_pkts++;
+		break;
+	case HIF_PM_HTC_STATS_PUT_HTT_FETCH_PKTS:
+		rpm_ctx->pm_stats.pm_stats_htc.rtpm_put_htt_fetch_pkts++;
+		break;
+	default:
+		break;
+	}
+}
+
 #endif /* FEATURE_RUNTIME_PM */
