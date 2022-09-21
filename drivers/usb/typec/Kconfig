@@ -50,6 +50,8 @@ source "drivers/usb/typec/tcpm/Kconfig"
 
 source "drivers/usb/typec/ucsi/Kconfig"
 
+source "drivers/usb/typec/mmi_tcpc/Kconfig"
+
 config TYPEC_TPS6598X
 	tristate "TI TPS6598x USB Power Delivery controller driver"
 	depends on I2C
@@ -64,5 +66,7 @@ config TYPEC_TPS6598X
 source "drivers/usb/typec/mux/Kconfig"
 
 source "drivers/usb/typec/altmodes/Kconfig"
+
+source "drivers/usb/typec/adapter_class/Kconfig"
 
 endif # TYPEC

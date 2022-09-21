@@ -1,0 +1,9 @@
+config SD77426_FG
+        tristate "SD77426 Fuel Guage driver"
+        default n
+        help
+         Say Y here if you have a SD77426 compatible
+         device connected.
+
+         This driver can also be built as a module.  If so, the module
+         will be called sd77426_fg_mmi.

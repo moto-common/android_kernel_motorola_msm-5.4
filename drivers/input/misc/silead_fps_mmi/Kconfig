@@ -1,0 +1,6 @@
+config INPUT_SILEAD_FPS_MMI
+	tristate "SILEAD fingerprint sensor MMI"
+	default n
+	help
+	 Say Y here if you wish to include support for MMI SILEAD finger print sensor.
+	 If unsure, say N.

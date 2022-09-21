@@ -1,0 +1,7 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+
+leds_lm3697-objs += ti_lm3697.o
+leds_lm3697-objs += ti_lm3697_backlight.o
+leds_lm3697-objs += ti_lm3697_backlight_data.o
+obj-$(CONFIG_LEDS_LM3697_MMI) += leds_lm3697.o
