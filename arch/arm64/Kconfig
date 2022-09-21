@@ -1906,3 +1906,21 @@ config CAMERA_LEGACY_STACK
 	default n
 	help
 	Enable it to use legacy camera stack.
+
+config MMI_QC3P_TURBO_CHARGER
+        bool "QC3P turbo charging"
+        default n
+        help
+        Enable it only for products that support QC3P charging.
+
+config MMI_QC3P_WT6670_DETECTED
+        bool "QC3P WT6670"
+        default n
+        help
+        Enable it only for products that support QC3P wt6670.
+
+config VIBRATOR_NOISE_CAMERA
+        bool "control vibrator noise for camera"
+        default n
+        help
+        Enable it only for products that need camera vibrator noise control.

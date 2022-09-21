@@ -1,0 +1,5 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+
+rt9426a_fg_mmi-objs += rt9426a_battery.o
+obj-$(CONFIG_RT9426A_FG) += rt9426a_fg_mmi.o
