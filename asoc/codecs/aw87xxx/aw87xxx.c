@@ -239,9 +239,11 @@ int aw87xxx_update_profile_esd(struct aw87xxx *aw87xxx, char *profile)
 
 	if (0 == strncmp(profile, aw87xxx->prof_off_name, AW_PROFILE_STR_MAX))
 		ret = aw87xxx_power_down(aw87xxx, profile);
-	else
+	else {
+		aw87xxx_dev_soft_reset(&aw87xxx->aw_dev);
+		msleep(2);
 		ret = aw87xxx_power_on(aw87xxx, profile);
-
+	}
 	return ret;
 }
 
