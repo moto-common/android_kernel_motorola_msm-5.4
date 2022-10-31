@@ -35,7 +35,7 @@
 #include "aw_log.h"
 #include "aw_dsp.h"
 
-#define AW882XX_DRIVER_VERSION "v1.9.0.7"
+#define AW882XX_DRIVER_VERSION "v1.9.0.9"
 #define AW882XX_I2C_NAME "aw882xxacf_smartpa"
 
 #define AW_READ_CHIPID_RETRIES		5	/* 5 times */
@@ -49,6 +49,7 @@ static unsigned int g_algo_copp_en = false;
 #ifdef AW_SPIN_ENABLE
 static unsigned int g_spin_value = 0;
 static uint32_t g_spin_en = 0;
+static uint32_t g_spin_relase_time = 100;
 #endif
 #ifdef AW882XX_RUNIN_TEST
 static unsigned int g_runin_test;
@@ -796,9 +797,11 @@ static int aw882xx_dev_gain_ctl_set(struct snd_kcontrol *kcontrol,
 
 	int value = 0;
 	int aw882xx_volume = 0;
+	int useful_range = 0;
 
+	mutex_lock(&aw882xx->lock);
 	/* Note: The larger the volume value is, the smaller the actual volume */
-	int useful_range = desc->mute_volume - desc->init_volume;
+	useful_range = desc->mute_volume - desc->init_volume;
 
 	aw_dev_info(aw882xx->dev, "desc->init_volume = %d mute_volume = %d",
 								desc->init_volume, desc->mute_volume );
@@ -816,7 +819,7 @@ static int aw882xx_dev_gain_ctl_set(struct snd_kcontrol *kcontrol,
 	aw882xx_volume = ((AW882XX_MOTO_MAX_GAIN - value) * useful_range) / AW882XX_MOTO_MAX_GAIN
 					+ desc->init_volume;
 
-	mutex_lock(&aw882xx->lock);
+
 	aw_dev->ops.aw_set_volume(aw_dev, aw882xx_volume);
 	mutex_unlock(&aw882xx->lock);
 	aw_dev_info(aw882xx->dev,"set value = %d, set aw882xx volume = %d", value, aw882xx_volume);
@@ -1412,7 +1415,7 @@ static int aw882xx_set_spin_status(struct snd_kcontrol *kcontrol,
 		aw_componet_codec_ops.kcontrol_codec(kcontrol);
 	struct aw882xx *aw882xx =
 		aw_componet_codec_ops.codec_get_drvdata(codec);
-	struct aw_spin_param spin_param;
+	//struct aw_spin_param spin_param;
 
 	aw_dev_dbg(aw882xx->dev, "ucontrol->value.integer.value[0]=%ld",
 			ucontrol->value.integer.value[0]);
@@ -1422,7 +1425,7 @@ static int aw882xx_set_spin_status(struct snd_kcontrol *kcontrol,
 	ctrl_value = ucontrol->value.integer.value[0];
 
 	if (g_algo_rx_en == true) {
-		ret = aw_dev_set_spin_param(aw_dev, ctrl_value, spin_param.relase_time);
+		ret = aw_dev_set_spin_param(aw_dev, ctrl_value, g_spin_relase_time);
 		if (ret)
 			aw_dev_err(aw882xx->dev, "set spin status error, ret=%d", ret);
 
@@ -1455,9 +1458,10 @@ static int aw882xx_get_spin_relase_time(struct snd_kcontrol *kcontrol,
 			ctrl_value = 0;
 		}
 		ucontrol->value.integer.value[0] = ctrl_value;
+		g_spin_relase_time = ctrl_value;
 	} else {
 		aw_dev_info(aw882xx->dev, "no stream, use record value");
-
+		ucontrol->value.integer.value[0] = g_spin_relase_time;
 	}
 	aw_dev_dbg(aw882xx->dev, "spin value is %ld", ucontrol->value.integer.value[0]);
 	return 0;
@@ -1487,9 +1491,10 @@ static int aw882xx_set_spin_relase_time(struct snd_kcontrol *kcontrol,
 		if (ret)
 			aw_dev_err(aw882xx->dev, "set spin release time error, ret=%d", ret);
 	} else {
-		aw_dev_info(aw882xx->dev, "set release time failed");
+		aw_dev_info(aw882xx->dev, "set release time failed, g_spin_en=%d, g_algo_rx_en=%d\n",
+				g_spin_en, g_algo_rx_en);
 	}
-
+	g_spin_relase_time = ucontrol->value.integer.value[0];
 	return 0;
 }
 
@@ -2566,10 +2571,10 @@ static int aw882xx_parse_dt(struct device *dev, struct aw882xx *aw882xx,
 	ret = of_property_read_u32(np, "skt-prof-mode", &aw882xx->skt_prof_mode);
 	if (ret) {
 		aw882xx->skt_prof_mode = AW_PARAMS_PATH_MODE;
-		dev_err(dev, "%s: fade_flag get failed,use default value!\n", __func__);
+		dev_err(dev, "%s: skt-prof-mode get failed,use default value!\n", __func__);
 	} else {
-		dev_info(dev, "%s: fade_flag = %d\n",
-			__func__, aw882xx->fade_flag);
+		dev_info(dev, "%s: skt-prof-mode = %d\n",
+			__func__, aw882xx->skt_prof_mode);
 	}
 #endif
 
