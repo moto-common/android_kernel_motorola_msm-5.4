@@ -87,7 +87,7 @@ static long mmi_sys_temp_ioctl(struct file *file, unsigned int cmd,
 			return -EACCES;
 		}
 
-		dev_dbg(&sys_temp_dev->pdev->dev, "name=%s, temperature=%d\n",
+		dev_info(&sys_temp_dev->pdev->dev, "name=%s, temperature=%d\n",
 			request.name, request.temperature);
 
 		for (i = 0; i < sys_temp_dev->num_sensors; i++) {
@@ -100,7 +100,7 @@ static long mmi_sys_temp_ioctl(struct file *file, unsigned int cmd,
 			}
 		}
 		if (i >= sys_temp_dev->num_sensors) {
-			dev_dbg(&sys_temp_dev->pdev->dev,
+			dev_info(&sys_temp_dev->pdev->dev,
 				"name %s not supported\n",
 			request.name);
 			ret = -EBADR;
