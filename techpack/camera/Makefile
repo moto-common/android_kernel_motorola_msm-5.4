@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-
+ifneq ($(CONFIG_CAMERA_LEGACY_STACK), y)
 # auto-detect subdirs
 ifneq ($(CONFIG_ARCH_QTI_VM), y)
 ifeq ($(CONFIG_ARCH_KONA), y)
@@ -107,4 +107,5 @@ LINUXINCLUDE    += \
 obj-y += drivers/
 else
 $(info Target not found)
+endif
 endif

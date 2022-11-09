@@ -1900,3 +1900,9 @@ config CAMERA_CCI_ADDR_SWITCH
 	default n
 	help
 	Enable it to switch i2c address.
+
+config CAMERA_LEGACY_STACK
+	bool "For products that use incompatible R camera userspace"
+	default n
+	help
+	Enable it to use legacy camera stack.
