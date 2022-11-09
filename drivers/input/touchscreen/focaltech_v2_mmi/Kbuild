@@ -1,0 +1,30 @@
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_V2_MMI) := focaltech_v2_mmi.o
+focaltech_v2_mmi-objs += focaltech_core.o
+focaltech_v2_mmi-objs += focaltech_ex_fun.o
+focaltech_v2_mmi-objs += focaltech_ex_mode.o
+focaltech_v2_mmi-objs += focaltech_gesture.o
+focaltech_v2_mmi-objs += focaltech_esdcheck.o
+focaltech_v2_mmi-objs += focaltech_point_report_check.o
+focaltech_v2_mmi-objs += focaltech_flash.o
+focaltech_v2_mmi-objs += focaltech_flash/focaltech_upgrade_ft3518u.o
+focaltech_v2_mmi-objs += focaltech_flash/focaltech_upgrade_ft5452i.o
+focaltech_v2_mmi-objs += focaltech_i2c.o
+EXTRA_CFLAGS += -DCONFIG_INPUT_FOCALTECH_0FLASH_MMI_IC_NAME_FT3519
+
+ifneq ($(filter m y,$(CONFIG_TOUCHSCREEN_MMI)),)
+       EXTRA_CFLAGS += -DCONFIG_INPUT_TOUCHSCREEN_MMI
+       focaltech_v2_mmi-objs += focaltech_ts_mmi.o
+endif
+ifneq ($(filter m y,$(CONFIG_INPUT_FOCALTECH_MMI_ENABLE_DOUBLE_TAP)),)
+	EXTRA_CFLAGS += -DFOCALTECH_SENSOR_EN
+endif
+ifneq ($(filter m y,$(CONFIG_INPUT_FOCALTECH_MMI_ENABLE_PALM)),)
+	EXTRA_CFLAGS += -DFOCALTECH_PALM_SENSOR_EN
+endif
+ifneq ($(filter m y,$(CONFIG_INPUT_FOCALTECH_MMI_PEN_NOTIFIER)),)
+	EXTRA_CFLAGS += -DFOCALTECH_PEN_NOTIFIER
+endif
+
+ifneq ($(filter m y, $(CONFIG_DRM_PANEL_NOTIFICATIONS)),)
+	EXTRA_CFLAGS += -DCONFIG_DRM_PANEL_NOTIFICATIONS
+endif

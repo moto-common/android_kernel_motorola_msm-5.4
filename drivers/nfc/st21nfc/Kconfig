@@ -1,0 +1,6 @@
+config NFC_ST21NFC
+	tristate "ST21NFC"
+	---help---
+	  STMicroelectronics ST21NFC core driver. It implements the chipset
+	  HCI logic and hooks into the NFC kernel APIs. Physical layers will
+	  register against it.

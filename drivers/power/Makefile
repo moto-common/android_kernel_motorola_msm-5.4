@@ -11,3 +11,5 @@ obj-$(CONFIG_MMI_CHARGER) += mmi_charger/
 obj-$(CONFIG_RT9426A_FG) += rt9426a_fg_mmi/
 obj-$(CONFIG_SD77426_FG) += sd77426_fg_mmi/
 obj-$(CONFIG_SGM4154X_CHARGER) += sgm4154x_chg_mmi/
+obj-$(CONFIG_MMI_PARALLEL_CHARGER_IIO) += mmi_parallel_charger_iio/
+obj-$(CONFIG_MMI_SC8549) += mmi_sc8549/
