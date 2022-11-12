@@ -45,6 +45,9 @@
 #endif
 #endif /* TS_MMI_TOUCH_GESTURE_SUPPRESSION */
 
+/* Double tap detection resources */
+#define DT2W_TIME         500
+static s64 tap_time_pre = 0;
 
 struct ts_mmi_sensor_platform_data {
 	struct input_dev *input_sensor_dev;
@@ -213,12 +216,18 @@ static int ts_mmi_gesture_handler(struct gesture_event_data *gev)
 	int key_code;
 	bool need2report = true;
 	struct ts_mmi_dev *touch_cdev = sensor_pdata->touch_cdev;
+	s64 now = ktime_to_ms(ktime_get());
 
 	switch (gev->evcode) {
 	case 1:
-		key_code = KEY_WAKEUP;
 		pr_info("%s: single tap\n", __func__);
-			break;
+		if (now - tap_time_pre < DT2W_TIME) {
+			key_code = KEY_WAKEUP;
+		} else {
+			tap_time_pre = now;
+			need2report = false;
+		}
+		break;
 	case 2:
 		key_code = KEY_F2;
 		if(gev->evdata.x == 0)
