@@ -734,11 +734,15 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		DSI_DEBUG("case BIT11_4, trans bl_lvl=0x%04x\n", bl_lvl);
 	}
 
+	if (panel->bl_config.bl_shift_left_1bit)
+	{
+		bl_lvl = (bl_lvl << 1);
+	}
+
 	if (panel->bl_config.bl_inverted_dbv)
 	{
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
 	}
-
         if (bl->bl_2bytes_enable){
                 bl_lvl_2bytes =  ((bl_lvl & 0xff00) >> 8) | ((bl_lvl & 0xff) << 8);
                 rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl_2bytes);
@@ -3221,6 +3225,12 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 
 	DSI_INFO("[%s] bl_2bytes_enable=%d\n", panel->name,
 			panel->bl_config.bl_2bytes_enable);
+
+	panel->bl_config.bl_shift_left_1bit = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-bl-level-shift-left-1bit");
+
+	DSI_INFO("[%s] bl_shift_left_1bit=%d\n", panel->name,
+			panel->bl_config.bl_shift_left_1bit);
 
 	panel->bl_config.bl_demura_cmd= utils->read_bool(utils->data,
 			"qcom,brightness-demura-command");
