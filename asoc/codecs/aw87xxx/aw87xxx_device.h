@@ -11,9 +11,9 @@
 #define AW87XXX_PID_39_PRODUCT_MAX	(3)
 #define AW87XXX_PID_59_3X9_PRODUCT_MAX	(2)
 #define AW87XXX_PID_59_5X9_PRODUCT_MAX	(4)
-#define AW87XXX_PID_5A_PRODUCT_MAX	(5)
-#define AW87XXX_PID_76_PROFUCT_MAX	(4)
-#define AW87XXX_PID_60_PROFUCT_MAX	(4)
+#define AW87XXX_PID_5A_PRODUCT_MAX	(6)
+#define AW87XXX_PID_76_PROFUCT_MAX	(5)
+#define AW87XXX_PID_60_PROFUCT_MAX	(5)
 #define AW_PRODUCT_NAME_LEN		(8)
 
 #define AW_GPIO_HIGHT_LEVEL		(1)
@@ -33,6 +33,12 @@
 
 #define AW_PID_9B_BIN_REG_CFG_COUNT	(10)
 
+#define AW87XXX_DELAY_REG_ADDR		(0xFE)
+#define AW87XXX_REG_DELAY_TIME		(1000)
+
+#define AW_BOOST_VOLTAGE_MIN		(0x00)
+
+#define AW_REG_NONE		(0xFF)
 /********************************************
  *
  * aw87xxx devices attributes
@@ -79,6 +85,11 @@ enum aw_reg_receiver_mode {
 	AW_IS_REC_MODE = 1,
 };
 
+enum aw_reg_voltage_status {
+	AW_VOLTAGE_LOW = 0,
+	AW_VOLTAGE_HIGH,
+};
+
 struct aw_mute_desc {
 	uint8_t addr;
 	uint8_t enable;
@@ -103,6 +114,12 @@ struct aw_rec_mode_desc {
 	uint8_t mask;
 };
 
+struct aw_voltage_desc {
+	uint8_t addr;
+	uint8_t vol_max;
+	uint8_t vol_min;
+};
+
 struct aw_device {
 	uint8_t i2c_addr;
 	uint8_t chipid;
@@ -123,6 +140,7 @@ struct aw_device {
 	struct aw_soft_rst_desc soft_rst_desc;
 	struct aw_esd_check_desc esd_desc;
 	struct aw_rec_mode_desc rec_desc;
+	struct aw_voltage_desc vol_desc;
 
 	struct aw_device_ops ops;
 };

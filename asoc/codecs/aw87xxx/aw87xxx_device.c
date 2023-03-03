@@ -42,7 +42,7 @@ const char *g_aw_pid_9b_product[] = {
 	"aw87319",
 };
 const char *g_aw_pid_18_product[] = {
-	"aw87418",
+	"aw87358",
 };
 
 const char *g_aw_pid_39_product[] = {
@@ -69,6 +69,7 @@ const char *g_aw_pid_5a_product[] = {
 	"aw87569",
 	"aw87579",
 	"aw81509",
+	"aw87579G",
 };
 
 const char *g_aw_pid_76_product[] = {
@@ -76,6 +77,7 @@ const char *g_aw_pid_76_product[] = {
 	"aw87320",
 	"aw87401",
 	"aw87360",
+	"aw87390G",
 };
 
 const char *g_aw_pid_60_product[] = {
@@ -83,6 +85,7 @@ const char *g_aw_pid_60_product[] = {
 	"aw87561",
 	"aw87562",
 	"aw87501",
+	"aw87550",
 };
 
 static int aw87xxx_dev_get_chipid(struct aw_device *aw_dev);
@@ -212,6 +215,14 @@ static int aw87xxx_dev_reg_update(struct aw_device *aw_dev,
 		AW_DEV_LOGI(aw_dev->dev, "reg=0x%02x, val = 0x%02x",
 			profile_data->data[i], profile_data->data[i + 1]);
 
+		//delay ms
+		if (profile_data->data[i] == AW87XXX_DELAY_REG_ADDR) {
+			AW_DEV_LOGI(aw_dev->dev, "delay %d ms", profile_data->data[i + 1]);
+			usleep_range(profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME, \
+				profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME + 10);
+			continue;
+		}
+
 		ret = aw87xxx_dev_i2c_write_byte(aw_dev, profile_data->data[i],
 				profile_data->data[i + 1]);
 		if (ret < 0)
@@ -256,6 +267,13 @@ static int aw87xxx_dev_reg_update_mute(struct aw_device *aw_dev,
 	for (i = 0; i < profile_data->len; i = i + 2) {
 		AW_DEV_LOGI(aw_dev->dev, "reg=0x%02x, val = 0x%02x",
 			profile_data->data[i], profile_data->data[i + 1]);
+		//delay ms
+		if (profile_data->data[i] == AW87XXX_DELAY_REG_ADDR) {
+			AW_DEV_LOGI(aw_dev->dev, "delay %d ms", profile_data->data[i + 1]);
+			usleep_range(profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME, \
+				profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME + 10);
+			continue;
+		}
 
 		reg_val = profile_data->data[i + 1];
 		if (profile_data->data[i] == aw_dev->mute_desc.addr) {
@@ -539,6 +557,14 @@ static int aw_dev_pid_9b_reg_update(struct aw_device *aw_dev,
 	for (i = 1; i < AW_PID_9B_BIN_REG_CFG_COUNT; i++) {
 		AW_DEV_LOGI(aw_dev->dev, "reg=0x%02x, val = 0x%02x",
 			i, profile_data->data[i]);
+		//delay ms
+		if (profile_data->data[i] == AW87XXX_DELAY_REG_ADDR) {
+			AW_DEV_LOGI(aw_dev->dev, "delay %d ms", profile_data->data[i + 1]);
+			usleep_range(profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME, \
+				profile_data->data[i + 1] * AW87XXX_REG_DELAY_TIME + 10);
+			continue;
+		}
+
 		reg_val = profile_data->data[i];
 		if (i == AW87XXX_PID_9B_SYSCTRL_REG) {
 			aw87xxx_dev_reg_mute_bits_set(aw_dev, &reg_val, true);
@@ -610,6 +636,8 @@ static void aw_dev_pid_9b_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_9B_SYSCTRL_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_9B_SYSCTRL_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW_REG_NONE;
 }
 
 static int aw_dev_pid_9a_init(struct aw_device *aw_dev)
@@ -699,6 +727,8 @@ static void aw_dev_chipid_18_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_18_CLASSD_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_18_CLASSD_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW87XXX_PID_18_CPOC_REG;
 }
 /********************** aw87xxx_pid_18 attributes end ***********************/
 
@@ -728,6 +758,8 @@ static void aw_dev_chipid_39_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_39_REG_MODECTRL;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_39_MODECTRL_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW87XXX_PID_39_REG_CPOVP;
 }
 /********************* aw87xxx_pid_39 attributes end *************************/
 
@@ -758,6 +790,8 @@ static void aw_dev_chipid_59_5x9_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_59_5X9_REG_ENCR;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_59_5X9_ENCRY_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW_REG_NONE;
 }
 /******************* aw87xxx_pid_59_5x9 attributes end ***********************/
 
@@ -787,6 +821,8 @@ static void aw_dev_chipid_59_3x9_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_59_3X9_REG_ENCR;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_59_3X9_ENCR_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW87XXX_PID_59_3X9_REG_CPOVP;
 }
 /******************* aw87xxx_pid_59_3x9 attributes end ***********************/
 
@@ -816,6 +852,8 @@ static void aw_dev_chipid_5a_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_5A_REG_DFT3R_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_5A_DFT3R_DEFAULT;
+
+	aw_dev->vol_desc.addr = AW_REG_NONE;
 }
 /********************** aw87xxx_pid_5a attributes end ************************/
 
@@ -845,6 +883,8 @@ static void aw_dev_chipid_76_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_76_DFT_ADP1_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_76_DFT_ADP1_CHECK;
+
+	aw_dev->vol_desc.addr = AW87XXX_PID_76_CPOVP_REG;
 }
 /********************** aw87xxx_pid_76 attributes end ************************/
 
@@ -874,6 +914,8 @@ static void aw_dev_chipid_60_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_60_NG3_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_60_ESD_REG_VAL;
+
+	aw_dev->vol_desc.addr = AW_REG_NONE;
 }
 /********************** aw87xxx_pid_60 attributes end ************************/
 

@@ -41,7 +41,7 @@
 #endif
 
 static DEFINE_MUTEX(g_dsp_lock);
-static unsigned int g_spin_value = 0;
+static unsigned int g_spin_value;
 
 static int g_rx_topo_id = AW_RX_DEFAULT_TOPO_ID;
 static int g_rx_port_id = AW_RX_DEFAULT_PORT_ID;

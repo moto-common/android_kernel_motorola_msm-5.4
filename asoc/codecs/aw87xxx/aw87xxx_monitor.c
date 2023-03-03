@@ -657,6 +657,11 @@ void aw87xxx_monitor_start(struct aw_monitor *monitor)
 		return;
 	}
 
+	AW_DEV_LOGI(aw87xxx->dev,
+		"esd_enable:%d, monitor_switch:%d, monitor_open_dsp_en:%d, is_rec_mode:%d",
+			monitor->esd_enable, monitor->monitor_hdr.monitor_switch,
+			monitor->open_dsp_en, aw87xxx->aw_dev.is_rec_mode);
+
 	if (monitor->esd_enable || (monitor->monitor_hdr.monitor_switch &&
 			!(aw87xxx->aw_dev.is_rec_mode) && monitor->open_dsp_en
 			&& monitor->bin_status == AW_ACF_UPDATE)) {
@@ -828,7 +833,7 @@ static ssize_t aw_attr_get_vmax(struct device *dev,
 			return ret;
 		}
 		len += snprintf(buf + len, PAGE_SIZE - len,
-				"get_vmax=0x%x\n", vmax_get);
+				"get_vmax=%d\n", vmax_get);
 	} else {
 		ret = aw_monitor_get_battery_capacity(dev, monitor,
 						&vbat_capacity);
@@ -898,7 +903,7 @@ static ssize_t aw_attr_get_monitor_switch(struct device *dev,
 	struct aw_monitor_header *monitor_hdr = &monitor->monitor_hdr;
 
 	len += snprintf(buf + len, PAGE_SIZE - len,
-			"aw87xxx monitor switch: %d\n",
+			"aw87xxx monitor switch: %u\n",
 			monitor_hdr->monitor_switch);
 	return len;
 }
@@ -963,7 +968,7 @@ static ssize_t aw_attr_get_monitor_time(struct device *dev,
 	struct aw_monitor_header *monitor_hdr = &monitor->monitor_hdr;
 
 	len += snprintf(buf + len, PAGE_SIZE - len,
-			"aw_monitor_timer = %d(ms)\n",
+			"aw_monitor_timer = %u(ms)\n",
 			monitor_hdr->monitor_time);
 	return len;
 }
@@ -1005,7 +1010,7 @@ static ssize_t aw_attr_get_monitor_count(struct device *dev,
 	struct aw_monitor_header *monitor_hdr = &monitor->monitor_hdr;
 
 	len += snprintf(buf + len, PAGE_SIZE - len,
-			"aw_monitor_count = %d\n",
+			"aw_monitor_count = %u\n",
 			monitor_hdr->monitor_count);
 	return len;
 }
@@ -1054,7 +1059,7 @@ static ssize_t aw_attr_get_rx(struct device *dev,
 			return ret;
 		}
 		len += snprintf(buf + len, PAGE_SIZE - len,
-			"aw87xxx rx: %d\n", enable);
+			"aw87xxx rx: %u\n", enable);
 	} else {
 		len += snprintf(buf + len, PAGE_SIZE - len,
 				"command is invalid\n");
@@ -1100,7 +1105,7 @@ static DEVICE_ATTR(vbat, S_IWUSR | S_IRUGO,
 static DEVICE_ATTR(vmax, S_IWUSR | S_IRUGO,
 	aw_attr_get_vmax, aw_attr_set_vmax);
 
-static DEVICE_ATTR(monitor_switch, S_IWUSR | S_IRUGO,
+static DEVICE_ATTR(monitor, S_IWUSR | S_IRUGO,
 	aw_attr_get_monitor_switch, aw_attr_set_monitor_switch);
 static DEVICE_ATTR(monitor_time, S_IWUSR | S_IRUGO,
 	aw_attr_get_monitor_time, aw_attr_set_monitor_time);
@@ -1121,7 +1126,7 @@ static struct attribute_group aw_monitor_vol_adjust_group = {
 };
 
 static struct attribute *aw_monitor_control[] = {
-	&dev_attr_monitor_switch.attr,
+	&dev_attr_monitor.attr,
 	&dev_attr_monitor_time.attr,
 	&dev_attr_monitor_count.attr,
 	&dev_attr_rx.attr,
@@ -1146,13 +1151,13 @@ static void aw_monitor_dtsi_parse(struct device *dev,
 
 	ret = of_property_read_string(dev_node, "esd-enable", &esd_enable);
 	if (ret < 0) {
-		AW_DEV_LOGI(dev, "esd_enable parse failed, user default[disable]");
-		monitor->esd_enable = AW_ESD_DISABLE;
+		AW_DEV_LOGI(dev, "esd_enable parse failed, user default[enable]");
+		monitor->esd_enable = AW_ESD_ENABLE;
 	} else {
-		if (!strcmp(esd_enable, "true"))
-			monitor->esd_enable = AW_ESD_ENABLE;
-		else
+		if (!strcmp(esd_enable, "false"))
 			monitor->esd_enable = AW_ESD_DISABLE;
+		else
+			monitor->esd_enable = AW_ESD_ENABLE;
 
 		AW_DEV_LOGI(dev, "parse esd-enable=[%s]",
 				monitor->esd_enable ? "true" : "false");

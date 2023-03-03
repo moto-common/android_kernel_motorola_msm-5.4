@@ -12,6 +12,11 @@
 #define REG_STATUS_CHECK_MAX			(10)
 #define AW_ESD_CHECK_DELAY			(1)
 
+
+#define AW_MONITOR_TIME_MIN			(0)
+#define AW_MONITOR_TIME_MAX			(50000)
+
+
 #define AW_ESD_ENABLE				(true)
 #define AW_ESD_DISABLE				(false)
 #define AW_ESD_ENABLE_STRLEN			(16)
