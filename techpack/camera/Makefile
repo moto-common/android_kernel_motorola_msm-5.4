@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
+ifeq ($(CONFIG_DENVER_DTB), y)
 
 # auto-detect subdirs
 ifneq ($(CONFIG_ARCH_QTI_VM), y)
@@ -107,4 +108,5 @@ LINUXINCLUDE    += \
 obj-y += drivers/
 else
 $(info Target not found)
+endif
 endif
