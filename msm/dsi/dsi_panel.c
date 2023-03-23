@@ -1142,21 +1142,35 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 
 		for (i =0; i < count; i++) {
 			payload = (u8 *)cmds->msg.tx_buf;
-			if(param_info->value == HBM_FOD_ON_STATE &&
-				payload[0] == lhbm_config->alpha_reg) {
-				if(lhbm_config->dbv_level >lhbm_config->alpha_size) {
-					DSI_ERR("unsupport dbv level %d on local hbm\n", lhbm_config->dbv_level);
-					rc = -EINVAL;
-					goto end;
-				}
+			if(param_info->value == HBM_FOD_ON_STATE) {
+				if(payload[0] == lhbm_config->alpha_reg) {
+					if(lhbm_config->dbv_level >lhbm_config->alpha_size) {
+						DSI_ERR("unsupport dbv level %d on local hbm\n", lhbm_config->dbv_level);
+						rc = -EINVAL;
+						goto end;
+					}
 
-				alpha = lhbm_config->alpha[lhbm_config->dbv_level];
-				payload[1] = (alpha&0xff00)>>8;
-				payload[2] = alpha&0xff;
-				DSI_INFO("%s: alpha [%x]=%x%x\n",
-				        __func__, payload[0], payload[1], payload[2]);
-				rc =  0;
-				goto end;
+					alpha = lhbm_config->alpha[lhbm_config->dbv_level];
+					payload[1] = (alpha&0xff00)>>8;
+					payload[2] = alpha&0xff;
+					DSI_INFO("%s: alpha [%x]=%x%x\n",
+					        __func__, payload[0], payload[1], payload[2]);
+					rc =  0;
+					goto end;
+				} else if(payload[0] == 0X51 &&
+					lhbm_config->dc_hybird_threshold != 0) {
+					if(lhbm_config->dbv_level < lhbm_config->dc_hybird_threshold) {
+						payload[1] = (lhbm_config->dc_hybird_threshold & 0xff00) >> 8;
+						payload[2] = lhbm_config->dc_hybird_threshold & 0xff;
+
+					} else {
+						payload[1] = (lhbm_config->dbv_level & 0xff00) >> 8;
+						payload[2] = lhbm_config->dbv_level & 0xff;
+					}
+					DSI_INFO("%s: [%x]=%x%x\n",
+						__func__, payload[0], payload[1], payload[2]);
+					continue;
+				}
 			} else if(param_info->value == HBM_OFF_STATE &&
 				payload[0] == 0x51) {
 				payload[1] = (lhbm_config->dbv_level&0xff00)>>8;
