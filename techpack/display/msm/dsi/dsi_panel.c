@@ -1415,6 +1415,19 @@ static int dsi_panel_parse_pixel_format(struct dsi_host_common_cfg *host,
 		fmt = DSI_PIXEL_FORMAT_RGB666;
 		break;
 	case 30:
+		/*
+		 * The destination pixel format (host->dst_format) depends
+		 * upon the compression. If compression is not enabled,
+		 * the dst_format should be RGB101010, otherwise, it should
+		 * be RGB888 (TODO: confirm).
+		 * The DSC status information is inside timing modes, that
+		 * will be parsed during first dsi_display_get_modes() call.
+		 * We can correct the dst_format there depending upon the
+		 * DSC enable status. We will be using dst_format only after
+		 * dsi_display_get_modes() call, so having a potentially wrong
+		 * value here should not be a problem.
+		 * We can change this implementation if we get a better idea.
+		 */
 		fmt = DSI_PIXEL_FORMAT_RGB101010;
 		break;
 	case 24:
@@ -3172,6 +3185,7 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 	priv_info = mode->priv_info;
 
 	priv_info->dsc_enabled = false;
+	priv_info->panel_dsc_update_pps_disable = false;
 	compression = utils->get_property(utils->data,
 			"qcom,compression-mode", NULL);
 	if (compression && !strcmp(compression, "dsc"))
@@ -3182,6 +3196,8 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 		return 0;
 	}
 
+	priv_info->panel_dsc_update_pps_disable = utils->read_bool(utils->data,
+                                "qcom,mdss-dsc-update-pps-disable");
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsc-version", &data);
 	if (rc) {
 		priv_info->dsc.config.dsc_version_major = 0x1;
