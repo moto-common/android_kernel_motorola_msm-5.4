@@ -1,0 +1,101 @@
+#
+# Ilitek touchscreen driver configuration
+#
+config TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	tristate "TOUCHSCREEN ILITEK CHIPSET"
+	help
+	  Say Y here if you have a ILITEK CHIPSET touchscreen.
+	  ILITEK controllers are multi touch controllers which can
+	  report 10 touches at a time.
+
+	  If unusre, say N.
+
+config ILITEK_DOUBLE_TAP
+	bool "Double tap"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to have Double tap support.
+
+	  If unsure, say N.
+
+config ILITEK_PANEL_NOTIFICATIONS
+	bool "Panel Notifications"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to have panel notification support.
+
+	  If unsure, say N.
+
+config ILITEK_TOUCH_STATE
+	bool "Check Touch State"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to have touch state check support.
+
+	  If unsure, say N.
+
+config ILITEK_RESUME_BY_DDI
+	bool "Resume by Display Driver Integration"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to have resume by display driver support.
+
+	  If unsure, say N.
+
+config ILITEK_FW_PANEL
+	bool "Panel based firmware checks"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to firmware by panel support.
+
+	  If unsure, say N.
+
+config ILITEK_SUSPEND_PWROFF
+	bool "Suspend Power-off"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to have suspend power off support.
+
+	  If unsure, say N.
+
+config ILITEK_CHARGER
+	bool "Charger mitigation"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to charger mitigation support.
+
+	  If unsure, say N.
+
+config ILITEK_ESD
+	bool "ESD mitigation"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to support ESD mitigation.
+
+	  If unsure, say N.
+
+config ILITEK_GESTURE
+	bool "Gestures"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to support gestures.
+
+	  If unsure, say N.
+
+config ILITEK_PANEL_GESTURE
+	bool "Gestures by panel"
+	depends on TOUCHSCREEN_ILITEK_CHIPSET_MMI
+	default n
+	help
+	  Say Y here if you want to support gesture by panel.
+
+	  If unsure, say N.
