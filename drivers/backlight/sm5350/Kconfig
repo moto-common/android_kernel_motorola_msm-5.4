@@ -1,0 +1,6 @@
+config LEDS_SM5350
+	tristate "LED support for SM5350"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for LEDs connected to SM5350.
