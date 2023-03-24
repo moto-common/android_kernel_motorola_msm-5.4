@@ -7,11 +7,11 @@
 &tlmm{
 	aw882xx_irq_default: aw882xx_irq_default {
 		mux {
-			pins = "gpio84";
+			pins = "gpio59";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio84";
+			pins = "gpio59";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -19,11 +19,11 @@
 
 	aw882xx_recv_irq_default: aw882xx_recv_irq_default {
 		mux {
-			pins = "gpio59";
+			pins = "gpio60";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio59";
+			pins = "gpio60";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -323,7 +323,7 @@
 		reg = <0x34>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&aw882xx_irq_default>;
-		irq-gpio = <&tlmm 84 0x2008>;
+		irq-gpio = <&tlmm 59 0x2008>;
 		dc-flag = <0>;
 		sound-channel = <0>;
 		aw-tx-topo-id = <0x1000ff00>;
@@ -336,15 +336,15 @@
 		skt-prof-mode = <1>;
 		status = "okay";
 		};
-	aw882xxacf_recv: aw882xxacf_recv_smartpa@35 {
+        aw882xxacf_recv: aw882xxacf_recv_smartpa@35 {
 		compatible = "awinic,aw882xxacf_smartpa";
-		reg = <0x35>;
+                reg = <0x35>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&aw882xx_recv_irq_default>;
-		irq-gpio = <&tlmm 59 0x2008>;
-		dc-flag = <0>;
-		sync-flag = <0>;
-		sound-channel = <1>;
+                irq-gpio = <&tlmm 60 0x2008>;
+                dc-flag = <0>;
+                sync-flag = <0>;
+                sound-channel = <1>;
 		aw-tx-topo-id = <0x1000ff00>;
 		aw-rx-topo-id = <0x1000ff01>;
 		aw-rx-port-id = <0x1002>;

@@ -91,7 +91,7 @@
 		sgm,irq-gpio = <&tlmm 12 0>;     //irq num base on hardware design
 		sgm,chg-en-gpio = <&tlmm 92 0>;   //gpio num base on hardware design  1.MTK parent node name is pio  2.QUALCOMM parent node name is tlmm or other
 
-		dpdm-supply = <&qusb_phy0>;
+		dpdm-supply = <&usb2_phy0>;
 		mmi,qc3-support;
 
 		/* sw jeita  parameter customer defined*/
@@ -134,7 +134,7 @@
 
 		bq2589x_irq-gpio = <&tlmm 12 0>;
 		bq2589x_en-gpio = <&tlmm 92 0>;
-		dpdm-supply = <&qusb_phy0>;
+		dpdm-supply = <&usb2_phy0>;
 
 		mmi,qc3-support;
 		ti,bq2589x,vbus-volt-high-level = <8700>;/* tune adapter to output 9v */

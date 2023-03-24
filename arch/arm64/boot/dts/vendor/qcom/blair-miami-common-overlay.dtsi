@@ -11,23 +11,22 @@
  */
 #include "blair-nopmi-moto-common-overlay.dtsi"
 
-#include "rhodep-audio-wcd9370-aw882xx-acf-dual-overlay.dtsi"
+#include "blair-audio-wcd9370-aw882xx-acf-dual-overlay.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/linux-event-codes.h>
 #include "holi-pmic-overlay-pm6125.dtsi"
 #include "holi-thermal-overlay-pm6125.dtsi"
 #include "display/holi-sde-display-mtp-pm6125.dtsi"
 #include "display/blair-sde-display-mtp.dtsi"
-#include "rhodep-fps-overlay.dtsi"
-#include "rhodep-display.dtsi"
-#include "rhodep-touchscreen.dtsi"
-#include "camera/blair-camera-sensor-mot-rhodep-overlay.dtsi"
-#include "rhodep-wl2868c.dtsi"
+#include "miami-fps-overlay.dtsi"
+#include "miami-display.dtsi"
+#include "miami-touchscreen.dtsi"
+#include "camera/blair-camera-sensor-mot-miami-overlay.dtsi"
+#include "miami-wl2868c.dtsi"
 #include "tcpc_config.dtsi"
 #include "sgm7220.dtsi"
-#include "discrete_charging_rhodep.dtsi"
+#include "discrete_charging_miami.dtsi"
 #include "discrete-rt-pd-manger.dtsi"
-#include "moto_therm_sys_temp.dtsi"
 
 &qupv3_se8_i2c {
 	status = "okay";
@@ -38,7 +37,7 @@
 
 		sense_r_mohm = <5>;
 		factory_mode_ntc_exist = <0>;
-		df-serialnum = "SB18D38324";
+		df-serialnum = "SB18D38323";
 		#include "bat_setting/CW_ng50-ATL-5000mah-rhodep.dtsi"
 		#include "bat_setting/CW_ng50-SWD-5000mah-rhodep.dtsi"
 	};
@@ -266,8 +265,6 @@
 	status = "ok";
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-	qcom,leica-used-i2c;
 	sec-nfc@27 {
 		compatible = "sec-nfc";
 		reg = <0x27>;
@@ -544,7 +541,7 @@
 };
 
 &gcc {
-	qcom,critical-devices = <&qupv3_se10_i2c>, <&qupv3_se7_i2c>;
+	qcom,critical-devices = <&qupv3_se10_i2c>, <&qupv3_se7_i2c>, <&qupv3_se8_i2c>;
 };
 
 &soc {

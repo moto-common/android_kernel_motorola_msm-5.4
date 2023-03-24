@@ -92,7 +92,6 @@
 		io-channels = <&pm6125_vadc ADC5_GPIO3_DIV3>;
 		io-channel-names = "gpio3_div3";
 
-
 		interrupt-parent = <&tlmm>;
 		interrupts = <12 0>;            //irq num base on hardware design
 		sgm,irq-gpio = <&tlmm 12 0>;     //irq num base on hardware design
@@ -157,6 +156,38 @@
 		ti,bq2589x,use-absolute-vindpm;
 	};
 
+	mm8013@55 {
+		compatible = "mitsumi,mm8013c10";
+		reg = <0x55>;
+		status = "okay";
+
+	};
+};
+
+&qupv3_se2_i2c {
+	status = "okay";
+	bq25960_master:bq25960-master@66 {
+		status = "okay";
+		compatible = "ti,bq25960-master";
+		reg = <0x66>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <57 0>;
+		ti,irq-gpio = <&tlmm 57 0>;
+	};
+
+};
+
+&qupv3_se8_i2c {
+	status = "okay";
+	bq25960_slave:bq25960-slave@67 {
+		status = "okay";
+		compatible = "ti,bq25960-slave";
+		reg = <0x67>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <84 0>;
+		ti,irq-gpio = <&tlmm 84 0>;
+	};
+
 };
 
 &tlmm {
@@ -186,7 +217,6 @@
 			input-enable;
 		};
 	};
-
 };
 
 &soc {
@@ -290,8 +320,8 @@
 					<1000000>;
 		charger_device_0 {
 			chrg-name = "pmic-sw";
-			psy-name = "battery";
-			charging-curr-limited = <300000>;
+			psy-name = "mmi_battery";
+			charging-curr-limited = <500000>;
 		};
 		charger_device_1 {
 			chrg-name = "cp-master";
