@@ -45,6 +45,7 @@
 		regulator-min-microvolt = <5500000>;
 		regulator-max-microvolt = <5500000>;
 		regulator-enable-ramp-delay = <233>;
+		qcom,supply-post-off-sleep = <5>;
 		gpio = <&tlmm 85 0>;
 		enable-active-high;
 		regulator-boot-on;
@@ -78,6 +79,7 @@
 			qcom,supply-max-voltage = <1904000>;
 			qcom,supply-enable-load = <32000>;
 			qcom,supply-disable-load = <80>;
+			qcom,supply-pre-on-sleep = <20>;
 			qcom,supply-pre-off-sleep = <150>;
 		};
 
@@ -100,7 +102,7 @@
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-off-sleep = <3>;
 			qcom,supply-post-on-sleep = <3>;
-			qcom,supply-post-off-sleep = <5>;
+			qcom,supply-post-off-sleep = <3>;
 		};
 
 	};
@@ -183,9 +185,9 @@
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
 	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
 
-	qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 07 FF];
 	qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
-	qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 06 66];
 	qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
 	qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
@@ -224,9 +226,9 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-panel-supplier = "txd";
 
-	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 07 FF];
+	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 EF];
 	qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
-	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 06 66];
+	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 05 8B];
 	qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
         qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
@@ -344,6 +346,7 @@
 		ctl-bank-en = <0x02>;
 		full-scale-current = <0x17>;
 		map-mode = <0>; /* 0 exponential, 1 linear */
+		current-align-type = <1>;
 		sm5350,default-brightness = <1810>;
 	};
 

@@ -375,6 +375,11 @@
 		status = "ok";
 	};
 
+	mot,cam-actuator {
+		compatible = "mot,actuator";
+		status = "ok";
+	};
+
 	cam_rear_avdd: gpio-regulator@4{
 		compatible = "regulator-fixed";
 		reg = <0x04 0x04>;
@@ -493,6 +498,7 @@
 		rgltr-load-current = <100000>;
 		cci-master = <1>;
 		status = "ok";
+		multi-user-support;
 	};
 
 	eeprom_main: qcom,eeprom@0 {

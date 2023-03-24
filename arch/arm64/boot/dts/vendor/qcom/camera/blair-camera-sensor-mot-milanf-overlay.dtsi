@@ -297,6 +297,7 @@
 		rgltr-load-current = <120000 100000 100000>;
 		cci-master = <1>;
 		status = "ok";
+		ois-name = "mot_dw9781c";
 	};
 
 	eeprom_main: qcom,eeprom@0 {

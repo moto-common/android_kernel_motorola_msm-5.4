@@ -259,6 +259,10 @@
 		compatible = "qcom,cam-res-mgr";
 		status = "ok";
 	};
+	mot,cam-actuator {
+		compatible = "mot,actuator";
+		status = "ok";
+	};
 	cam_macro_avdd: gpio-regulator@0{
 		compatible = "regulator-fixed";
 		reg = <0x00 0x00>;
@@ -327,6 +331,7 @@
 		rgltr-load-current = <100000>;
 		cci-master = <1>;
 		status = "ok";
+                multi-user-support;
 	};
 
        eeprom_main: qcom,eeprom@0 {
@@ -357,12 +362,13 @@
 		cam_vana-supply = <&cam_pmic1_ldo6_vddois>;
 		cam_vdig-supply = <&cam_pmic2_ldo2_dvdd2>;
 		cam_clk-supply = <&gcc_camss_top_gdsc>;
+                cam_vaf-supply = <&cam_pmic1_ldo5_vddaf>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig",
-			"cam_clk";
+			"cam_clk, cam_vaf";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000 2800000 1050000 0>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0>;
-		rgltr-load-current = <120000 80000 1200000 0>;
+		rgltr-min-voltage = <1800000 2800000 1050000 0 2800000>;
+		rgltr-max-voltage = <1800000 2800000 1050000 0 2800000>;
+		rgltr-load-current = <120000 80000 1200000 0 100000>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
