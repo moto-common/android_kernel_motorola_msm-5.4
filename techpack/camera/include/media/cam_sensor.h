@@ -514,6 +514,9 @@ struct cam_flash_query_cap_info {
 	__u32    max_duration_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u32    max_current_torch[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u32    flash_type;
+#ifdef CONFIG_CAMERA_FLASH_IIC_COMPATIBLE
+	__u32    flash_supplier;
+#endif
 } __attribute__ ((packed));
 
 #endif
