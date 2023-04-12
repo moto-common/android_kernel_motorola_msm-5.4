@@ -426,6 +426,7 @@ struct msm_display_dsc_info {
 	u32 dsc_4hsmerge_alignment;
 	bool half_panel_pu;
 	int datatype;
+	bool dsc_novatek_ic;
 };
 
 
