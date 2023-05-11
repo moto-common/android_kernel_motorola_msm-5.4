@@ -5705,6 +5705,11 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 						true);
 			}
 		}
+
+		if (display->panel->dfps_caps.dfps_send_cmd_with_te_async) {
+			if ((display->panel->dfps_caps.current_fps != 60)&&(display->panel->dfps_caps.current_fps != 90))
+				dsi_display_status_check_te(display,1);
+		}
 		rc = dsi_display_dfps_update(display, mode);
 		if (rc) {
 			DSI_ERR("[%s]DSI dfps update failed, rc=%d\n",

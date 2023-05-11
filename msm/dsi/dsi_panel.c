@@ -630,6 +630,58 @@ error:
 	return rc;
 }
 
+static int dsi_panel_dfps_tx_cmd_set(struct dsi_panel *panel,
+				enum dsi_cmd_set_type type, bool async)
+{
+	int rc = 0, i = 0;
+	ssize_t len;
+	struct dsi_cmd_desc *cmds;
+	u32 count;
+	enum dsi_cmd_set_state state;
+	struct dsi_display_mode *mode;
+	const struct mipi_dsi_host_ops *ops = panel->host->ops;
+
+	if (!panel || !panel->cur_mode)
+		return -EINVAL;
+
+	mode = panel->cur_mode;
+
+	cmds = mode->priv_info->cmd_sets[type].cmds;
+	count = mode->priv_info->cmd_sets[type].count;
+	state = mode->priv_info->cmd_sets[type].state;
+	SDE_EVT32(type, state, count);
+
+	if (count == 0) {
+		DSI_DEBUG("[%s] No commands to be sent for state(%d)\n",
+			 panel->name, type);
+		goto error;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (state == DSI_CMD_SET_STATE_LP)
+			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
+
+		if (cmds->last_command)
+			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+
+		if (async) cmds->msg.flags |= MIPI_DSI_MSG_ASYNC_OVERRIDE;
+		else cmds->msg.flags &= ~MIPI_DSI_MSG_ASYNC_OVERRIDE;
+
+		len = ops->transfer(panel->host, &cmds->msg);
+		if (len < 0) {
+			rc = len;
+			DSI_ERR("failed to set cmds(%d), rc=%d\n", type, rc);
+			goto error;
+		}
+		if (cmds->post_wait_ms)
+			usleep_range(cmds->post_wait_ms*1000,
+					((cmds->post_wait_ms*1000)+10));
+		cmds++;
+	}
+error:
+	return rc;
+}
+
 static int dsi_panel_pinctrl_deinit(struct dsi_panel *panel)
 {
 	int rc = 0;
@@ -2166,6 +2218,9 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		else if (dfps_caps->dfps_list[i] > dfps_caps->max_refresh_rate)
 			dfps_caps->max_refresh_rate = dfps_caps->dfps_list[i];
 	}
+
+	dfps_caps->dfps_send_cmd_with_te_async = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-pan-dfps-send-command-with-te-async");
 
 	dfps_caps->dfps_send_cmd_support = utils->read_bool(utils->data,
 			"qcom,mdss-dsi-pan-dpfs-send-command");
@@ -6212,6 +6267,7 @@ int dsi_panel_dfps_send_cmd(struct dsi_panel *panel)
 	enum dsi_cmd_set_type type = DSI_CMD_SET_DFPS_CMD_60;
 	char cmd_set_prop[64];
 	int rc = 0;
+	bool async = false;
 
 	if (!panel || !panel->cur_mode)
 		return -EINVAL;
@@ -6229,13 +6285,22 @@ int dsi_panel_dfps_send_cmd(struct dsi_panel *panel)
 		}
 	}
 
-	DSI_INFO("prop %s refresh_rate %d type %d\n", cmd_set_prop, refresh_rate, type);
+	//DSI_INFO("prop %s refresh_rate %d type %d\n", cmd_set_prop, refresh_rate, type);
+	if (panel->dfps_caps.dfps_send_cmd_with_te_async) {
+		if ((panel->dfps_caps.current_fps == 60)||(panel->dfps_caps.current_fps == 90)) async = false;
+		else async = true;
+	}
 
-	rc = dsi_panel_tx_cmd_set(panel, type);
+	DSI_INFO("fps switch %d to %d , async %d\n",panel->dfps_caps.current_fps, refresh_rate, async);
+
+	rc = dsi_panel_dfps_tx_cmd_set(panel, type, async);
 	if (rc) {
 		DSI_ERR("[%s] failed to send %s cmds, rc=%d\n",
 		       panel->name, cmd_set_prop_map[type], rc);
+	} else {
+		panel->dfps_caps.current_fps= refresh_rate;
 	}
+
 	mutex_unlock(&panel->panel_lock);
 
 	return rc;

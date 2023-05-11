@@ -125,6 +125,7 @@ struct dsi_dfps_capabilities {
 	u32 dfps_list_len;
 	bool dfps_support;
 	bool dfps_send_cmd_support;
+	bool dfps_send_cmd_with_te_async;
 	u32 panel_on_fps;
 	u32 current_fps;
 };
