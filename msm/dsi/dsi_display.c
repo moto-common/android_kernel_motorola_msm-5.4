@@ -9183,6 +9183,15 @@ int dsi_display_enable(struct dsi_display *display)
 			goto error;
 		}
 		dsi_panel_reset_param(display->panel);
+
+		if (display->panel->dfps_caps.dfps_send_cmd_support) {
+			display->panel->dfps_caps.current_fps = display->panel->dfps_caps.panel_on_fps;
+			if (mode->timing.refresh_rate != display->panel->dfps_caps.panel_on_fps) {
+				DSI_INFO("[%s] dst_refresh_rate %d panel_on_fps %d\n", __func__, mode->timing.refresh_rate, display->panel->dfps_caps.panel_on_fps);
+				dsi_panel_dfps_send_cmd(display->panel);
+			}
+		}
+
 		dsi_display_enable_status(display, true);
 	}
 	dsi_display_panel_id_notification(display);
