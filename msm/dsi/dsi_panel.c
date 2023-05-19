@@ -2223,7 +2223,7 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 			"qcom,mdss-dsi-pan-dfps-send-command-with-te-async");
 
 	dfps_caps->dfps_send_cmd_support = utils->read_bool(utils->data,
-			"qcom,mdss-dsi-pan-dpfs-send-command");
+			"qcom,mdss-dsi-pan-dfps-send-command");
 	if(dfps_caps->dfps_send_cmd_support) {
 		dfps_caps->panel_on_fps = dfps_caps->dfps_list[0];
 		dfps_caps->current_fps = dfps_caps->panel_on_fps;
@@ -4423,6 +4423,12 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 	return 0;
 }
 
+static void dsi_panel_lhbm_config_deinit(struct dsi_panel_lhbm_config *lhbm_config)
+{
+	if (lhbm_config->alpha)
+		kfree(lhbm_config->alpha);
+}
+
 static void dsi_panel_update_util(struct dsi_panel *panel,
 				  struct device_node *parser_node)
 {
@@ -4824,6 +4830,8 @@ void dsi_panel_put(struct dsi_panel *panel)
 
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
+
+	dsi_panel_lhbm_config_deinit(&panel->lhbm_config);
 
 	kfree(panel);
 }
