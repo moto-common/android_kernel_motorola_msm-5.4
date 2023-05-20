@@ -150,6 +150,102 @@ static int aw_dev_check_cfg_by_hdr(struct aw_container *aw_cfg)
 	return 0;
 }
 
+static int aw_dev_parse_check_acf_by_hdr_v_1_0_0_0(struct aw_container *aw_cfg)
+{
+	struct aw_cfg_hdr *cfg_hdr = NULL;
+	struct aw_cfg_dde_v_1_0_0_0 *cfg_dde = NULL;
+	unsigned int end_data_offset = 0;
+	unsigned int act_data = 0;
+	unsigned int hdr_ddt_len = 0;
+	uint8_t act_crc8 = 0;
+	int i;
+
+	cfg_hdr = (struct aw_cfg_hdr *)aw_cfg->data;
+
+	/*check file type id is awinic acf file*/
+	if (cfg_hdr->a_id != ACF_FILE_ID) {
+		aw_pr_err("not acf type file");
+		return -EINVAL;
+	}
+
+	hdr_ddt_len = cfg_hdr->a_hdr_offset + cfg_hdr->a_ddt_size;
+	if (hdr_ddt_len > aw_cfg->len) {
+		aw_pr_err("hdrlen with ddt_len [%d] overflow file size[%d]",
+		cfg_hdr->a_hdr_offset, aw_cfg->len);
+		return -EINVAL;
+	}
+
+	/*check data size*/
+	cfg_dde = (struct aw_cfg_dde_v_1_0_0_0 *)((char *)aw_cfg->data + cfg_hdr->a_hdr_offset);
+	act_data += hdr_ddt_len;
+	for (i = 0; i < cfg_hdr->a_ddt_num; i++)
+		act_data += cfg_dde[i].data_size;
+
+	if (act_data != aw_cfg->len) {
+		aw_pr_err("act_data[%d] not equal to file size[%d]!",
+			act_data, aw_cfg->len);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < cfg_hdr->a_ddt_num; i++) {
+		/* data check */
+		end_data_offset = cfg_dde[i].data_offset + cfg_dde[i].data_size;
+		if (end_data_offset > aw_cfg->len) {
+			aw_pr_err("a_ddt_num[%d] end_data_offset[%d] overflow file size[%d]",
+				i, end_data_offset, aw_cfg->len);
+			return -EINVAL;
+		}
+
+		/* crc check */
+		act_crc8 = aw_dev_crc8_check(aw_cfg->data + cfg_dde[i].data_offset, cfg_dde[i].data_size);
+		if (act_crc8 != cfg_dde[i].data_crc) {
+			aw_pr_err("a_ddt_num[%d] crc8 check failed, act_crc8:0x%x != data_crc 0x%x",
+				i, (uint32_t)act_crc8, cfg_dde[i].data_crc);
+			return -EINVAL;
+		}
+	}
+
+	aw_pr_info("project name [%s]", cfg_hdr->a_project);
+	aw_pr_info("custom name [%s]", cfg_hdr->a_custom);
+	aw_pr_info("version name [%d.%d.%d.%d]", cfg_hdr->a_version[3], cfg_hdr->a_version[2],
+						cfg_hdr->a_version[1], cfg_hdr->a_version[0]);
+	aw_pr_info("author id %d", cfg_hdr->a_author_id);
+
+	return 0;
+}
+
+static int aw_dev_parse_raw_dsp_skt(struct aw_device *aw_dev,
+			uint8_t *data, uint32_t data_len, struct aw_prof_desc *prof_desc)
+{
+	aw_dev_info(aw_dev->dev, "data_size:%d enter", data_len);
+
+	prof_desc->sec_desc[AW_PROFILE_DATA_TYPE_ALGO_DSP].data = data;
+	prof_desc->sec_desc[AW_PROFILE_DATA_TYPE_ALGO_DSP].len = data_len;
+
+	return 0;
+}
+
+static int aw_dev_get_chan_group(struct aw_device *aw_dev, int *chan_group)
+{
+	switch (aw_dev->channel) {
+
+	case AW_DEV_CH_PRI_L:
+	case AW_DEV_CH_PRI_R:
+		*chan_group = AW_DEV_CH_GROUP_PRI;
+		break;
+	case AW_DEV_CH_SEC_L:
+	case AW_DEV_CH_SEC_R:
+		*chan_group = AW_DEV_CH_GROUP_SEC;
+		break;
+	default:
+		aw_pr_err("can not find chan_group, channel %d ", aw_dev->channel);
+		return -EINVAL;
+	}
+
+	aw_pr_dbg("chan_group[%d] ", *chan_group);
+	return 0;
+}
+
 int aw_dev_load_acf_check(struct aw_container *aw_cfg)
 {
 	struct aw_cfg_hdr *cfg_hdr = NULL;
@@ -169,6 +265,8 @@ int aw_dev_load_acf_check(struct aw_container *aw_cfg)
 	switch (cfg_hdr->a_hdr_version) {
 	case AW_CFG_HDR_VER_0_0_0_1:
 		return aw_dev_check_cfg_by_hdr(aw_cfg);
+	case AW_CFG_HDR_VER_1_0_0_0:
+		return aw_dev_parse_check_acf_by_hdr_v_1_0_0_0(aw_cfg);
 	default:
 		aw_pr_err("unsupported hdr_version [0x%x]", cfg_hdr->a_hdr_version);
 		return -EINVAL;
@@ -452,6 +550,234 @@ static int aw_dev_cfg_get_vaild_prof(struct aw_device *aw_dev,
 	return 0;
 }
 
+
+/******************ACF bin format V1.0.0.0************************/
+static int aw_dev_parse_get_scene_count_v1_0_0_0(struct aw_device *aw_dev,
+					struct aw_container *aw_cfg, int *count)
+{
+	struct aw_cfg_hdr *cfg_hdr = (struct aw_cfg_hdr *)aw_cfg->data;
+	struct aw_cfg_dde_v_1_0_0_0 *cfg_dde =
+		(struct aw_cfg_dde_v_1_0_0_0 *)(aw_cfg->data + cfg_hdr->a_hdr_offset);
+	int i = 0;
+	int chan_group = -1;
+	int ret = -1;
+
+	ret = aw_dev_get_chan_group(aw_dev, &chan_group);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get chan_group failed ");
+		return ret;
+	}
+
+	for (i = 0; i < cfg_hdr->a_ddt_num; ++i) {
+		if ((cfg_dde[i].data_type == ACF_SEC_TYPE_DSP) &&
+				(cfg_dde[i].type == AW_SKT_TYPE_ID) &&
+				(chan_group == cfg_dde[i].dev_index)) {
+			(*count)++;
+		}
+	}
+
+	if ((*count) == 0) {
+		aw_dev_err(aw_dev->dev, "can't find scene");
+		return -EINVAL;
+	}
+
+	aw_dev_info(aw_dev->dev, "scene count is %d", (*count));
+	return 0;
+}
+
+
+static int aw_dev_parse_create_prof_name_list_v_1_0_0_0(struct aw_device *aw_dev)
+{
+	struct aw_prof_info *prof_info = &aw_dev->skt_prof_info;
+	struct aw_prof_desc *prof_desc= prof_info->prof_desc;
+	int i;
+
+	if (prof_desc == NULL) {
+		aw_dev_err(aw_dev->dev, "prof_desc is NULL");
+		return -EINVAL;
+	}
+
+	prof_info->prof_name_list = devm_kzalloc(aw_dev->dev,
+					prof_info->count * PROFILE_STR_MAX,
+					GFP_KERNEL);
+	if (prof_info->prof_name_list == NULL) {
+		aw_dev_err(aw_dev->dev, "prof_name_list devm_kzalloc failed");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < prof_info->count; i++) {
+		prof_info->prof_name_list[i] = prof_desc[i].prf_str;
+		aw_dev_info(aw_dev->dev, "prof name list[%d]:%s, id=%d", i, prof_info->prof_name_list[i], prof_desc[i].id);
+	}
+
+	return 0;
+}
+
+static int aw_dev_parse_skt_type_v_1_0_0_0(struct aw_device *aw_dev,
+		struct aw_cfg_hdr *prof_hdr)
+{
+	int i = 0;
+	int ret = -1;
+	int scene_count = 0;
+	struct aw_prof_info *prof_info = &aw_dev->skt_prof_info;
+	struct aw_cfg_dde_v_1_0_0_0 *cfg_dde =
+		(struct aw_cfg_dde_v_1_0_0_0 *)((char *)prof_hdr + prof_hdr->a_hdr_offset);
+	int chan_group = -1;
+	aw_dev_info(aw_dev->dev, "enter");
+
+	ret = aw_dev_get_chan_group(aw_dev, &chan_group);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get chan_group failed ");
+		return ret;
+	}
+
+	for (i = 0; i < prof_hdr->a_ddt_num; i++) {
+		if ((cfg_dde[i].type == AW_SKT_TYPE_ID) &&
+			(cfg_dde[i].data_type == ACF_SEC_TYPE_DSP) &&
+				(chan_group == cfg_dde[i].dev_index)) {
+
+			ret = aw_dev_parse_raw_dsp_skt(aw_dev,
+				(uint8_t *)prof_hdr + cfg_dde[i].data_offset,
+				cfg_dde[i].data_size, &prof_info->prof_desc[scene_count]);
+			if (ret < 0) {
+				aw_dev_err(aw_dev->dev, "parse dsp bin data failed");
+				return ret;
+			}
+
+			prof_info->prof_desc[scene_count].prf_str = cfg_dde[i].dev_profile_str;
+			prof_info->prof_desc[scene_count].id = cfg_dde[i].dev_profile;
+
+			scene_count++;
+		}
+	}
+	aw_dev_dbg(aw_dev->dev, "scene_count = %d", scene_count);
+	return 0;
+}
+
+static int aw_dev_parse_acf_by_hdr_v_1_0_0_0(struct aw_device *aw_dev, struct aw_container *aw_cfg)
+{
+	struct aw_prof_info *prof_info = &aw_dev->skt_prof_info;
+	struct aw_cfg_hdr *cfg_hdr = (struct aw_cfg_hdr *)aw_cfg->data;
+	int ret;
+
+	ret = aw_dev_parse_get_scene_count_v1_0_0_0(aw_dev, aw_cfg, &prof_info->count);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "get scene count failed");
+		return ret;
+	}
+
+	prof_info->prof_desc = devm_kzalloc(aw_dev->dev,
+					prof_info->count * sizeof(struct aw_prof_desc),
+					GFP_KERNEL);
+	if (prof_info->prof_desc == NULL) {
+		aw_dev_err(aw_dev->dev, "prof_desc devm_kzalloc failed");
+		return -ENOMEM;
+	}
+
+	ret = aw_dev_parse_skt_type_v_1_0_0_0(aw_dev, cfg_hdr);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, " failed");
+		return ret;
+	}
+
+	ret = aw_dev_parse_create_prof_name_list_v_1_0_0_0(aw_dev);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "create prof name list failed");
+		return ret;
+	}
+
+	return 0;
+}
+
+int aw_dev_parse_skt_bin(struct aw_device *aw_dev, struct aw_container *aw_cfg)
+{
+	struct aw_cfg_hdr *cfg_hdr = NULL;
+	int ret = -1;
+
+	if (aw_dev == NULL || aw_cfg == NULL) {
+		aw_dev_err(aw_dev->dev, "pointer is NULL");
+		return -ENOMEM;
+	}
+
+	cfg_hdr = (struct aw_cfg_hdr *)aw_cfg->data;
+
+	if (cfg_hdr->a_hdr_version == AW_CFG_HDR_VER_1_0_0_0) {
+		ret = aw_dev_parse_acf_by_hdr_v_1_0_0_0(aw_dev, aw_cfg);
+		if (ret < 0) {
+			aw_dev_err(aw_dev->dev, "hdr_cersion[0x%x] parse failed",
+						cfg_hdr->a_hdr_version);
+			return ret;
+		}
+	} else {
+		aw_dev_err(aw_dev->dev, "skt bin format [0x%x] unsupported", cfg_hdr->a_hdr_version);
+	}
+
+	return 0;
+}
+
+struct aw_sec_data_desc *aw_dev_get_algo_prof_data(struct aw_device *aw_dev, int prof_id)
+{
+	struct aw_sec_data_desc *prof_data = NULL;
+
+	struct aw_prof_info *prof_info = &aw_dev->skt_prof_info;
+	int i;
+
+	aw_dev_dbg(aw_dev->dev, "prof num = %d", prof_info->count);
+	for (i = 0; i < prof_info->count; i++) {
+		if (prof_id == prof_info->prof_desc[i].id) {
+			prof_data = &prof_info->prof_desc[i].sec_desc[AW_PROFILE_DATA_TYPE_ALGO_DSP];
+			break;
+		}
+	}
+
+	return prof_data;
+}
+
+int aw_dev_skt_prof_mode(struct aw_device *aw_dev, int prof_id)
+{
+	struct aw_sec_data_desc *prof_data = NULL;
+	int ret = -1;
+	struct list_head *dev_list = NULL;
+	struct list_head *pos = NULL;
+	struct aw_device *local_dev = NULL;
+
+	ret = aw_dev_get_list_head(&dev_list);
+	if (ret) {
+		aw_dev_err(aw_dev->dev, "get dev list failed ");
+		return ret;
+	}
+
+	aw_dev_info(aw_dev->dev, "set_cur_prof=%d,pre_prof=%d",
+		prof_id, aw_dev->pre_prof_id);
+
+	if (prof_id != aw_dev->pre_prof_id) {
+
+		list_for_each (pos, dev_list) {
+			local_dev = container_of(pos, struct aw_device, list_node);
+
+			if ((local_dev->channel == AW_DEV_CH_PRI_L) || (local_dev->channel == AW_DEV_CH_SEC_L)) {
+				prof_data = aw_dev_get_algo_prof_data(local_dev, prof_id);
+				if (prof_data) {
+					ret = aw_dev_set_algo_prof_data(local_dev, prof_data->data, prof_data->len);
+					if (ret < 0) {
+						aw_dev_err(local_dev->dev, "set algo prof [%d] failed", prof_id);
+						return -EINVAL;
+					}
+				} else {
+					aw_dev_err(local_dev->dev, "prof data is NULL");
+					return -EINVAL;
+				}
+			}
+		}
+
+		aw_dev->pre_prof_id = prof_id;
+		aw_dev_info(aw_dev->dev, "set algo prof [%d] ok", prof_id);
+	}
+
+	return 0;
+}
+
+
 static int aw_dev_cfg_load(struct aw_device *aw_dev, struct aw_container *aw_cfg)
 {
 	struct aw_cfg_hdr *cfg_hdr = NULL;
@@ -570,6 +896,113 @@ static char *aw_dev_get_prof_name(struct aw_device *aw_dev, int index)
 	return 0;
 }*/
 
+static int aw_dev_get_icalk(struct aw_device *aw_dev, int16_t *icalk)
+{
+	int ret = -1;
+	unsigned int reg_val = 0;
+	uint16_t reg_icalk = 0;
+	uint16_t reg_icalkl = 0;
+	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
+
+	if (desc->icalkl_reg == AW_REG_NONE) {
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalk_reg, &reg_val);
+		reg_icalk = (uint16_t)reg_val & (~desc->icalk_reg_mask);
+	} else {
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalk_reg, &reg_val);
+		reg_icalk = (uint16_t)reg_val & (~desc->icalk_reg_mask);
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalkl_reg, &reg_val);
+		reg_icalkl = (uint16_t)reg_val & (~desc->icalkl_reg_mask);
+		if (aw_dev->efuse_check == AW_EF_OR_CHECK)
+			reg_icalk = (reg_icalk >> desc->icalk_shift) | (reg_icalkl >> desc->icalkl_shift);
+		else
+			reg_icalk = (reg_icalk >> desc->icalk_shift) & (reg_icalkl >> desc->icalkl_shift);
+	}
+
+	if (reg_icalk & (~desc->icalk_sign_mask))
+		reg_icalk = reg_icalk | (~desc->icalk_neg_mask);
+
+	*icalk = (int16_t)reg_icalk;
+
+	return ret;
+}
+
+static int aw_dev_get_vcalk(struct aw_device *aw_dev, int16_t *vcalk)
+{
+	int ret = -1;
+	unsigned int reg_val = 0;
+	uint16_t reg_vcalk = 0;
+	uint16_t reg_vcalkl = 0;
+	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
+
+	if (desc->vcalkl_reg == AW_REG_NONE) {
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalk_reg, &reg_val);
+		reg_vcalk = (uint16_t)reg_val & (~desc->vcalk_reg_mask);
+	} else {
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalk_reg, &reg_val);
+		reg_vcalk = (uint16_t)reg_val & (~desc->vcalk_reg_mask);
+		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalkl_reg, &reg_val);
+		reg_vcalkl = (uint16_t)reg_val & (~desc->vcalkl_reg_mask);
+		if (aw_dev->efuse_check == AW_EF_OR_CHECK)
+			reg_vcalk = (reg_vcalk >> desc->vcalk_shift) | (reg_vcalkl >> desc->vcalkl_shift);
+		else
+			reg_vcalk = (reg_vcalk >> desc->vcalk_shift) & (reg_vcalkl >> desc->vcalkl_shift);
+	}
+
+	if (reg_vcalk & (~desc->vcalk_sign_mask))
+		reg_vcalk = reg_vcalk | (~desc->vcalk_neg_mask);
+
+	*vcalk = (int16_t)reg_vcalk;
+
+	return ret;
+}
+
+static int aw_dev_set_vcalb(struct aw_device *aw_dev)
+{
+	int ret = -1;
+	unsigned int reg_val;
+	int vcalb;
+	int icalk;
+	int vcalk;
+	int16_t icalk_val = 0;
+	int16_t vcalk_val = 0;
+
+	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
+
+	if (desc->icalk_reg == AW_REG_NONE || desc->vcalb_reg == AW_REG_NONE) {
+		aw_dev_info(aw_dev->dev, "REG None!");
+		return 0;
+	}
+
+	ret = aw_dev_get_icalk(aw_dev, &icalk_val);
+	if (ret < 0)
+		return ret;
+
+	ret = aw_dev_get_vcalk(aw_dev, &vcalk_val);
+	if (ret < 0)
+		return ret;
+
+	icalk = desc->cabl_base_value + desc->icalk_value_factor * icalk_val;
+	vcalk = desc->cabl_base_value + desc->vcalk_value_factor * vcalk_val;
+	if (!vcalk) {
+		aw_dev_err(aw_dev->dev, "vcalk is 0");
+		return -EINVAL;
+	}
+
+	vcalb = desc->vcal_factor * icalk / vcalk;
+
+	reg_val = (unsigned int)vcalb;
+	aw_dev_info(aw_dev->dev, "icalk=%d, vcalk=%d, vcalb=%d, reg_val=0x%04x",
+			icalk, vcalk, vcalb, reg_val);
+
+	ret =  aw_dev->ops.aw_i2c_write(aw_dev, desc->vcalb_reg, reg_val);
+
+	aw_dev_info(aw_dev->dev, "done");
+
+	return ret;
+}
+
+
+
 /*pwd enable update reg*/
 static int aw_dev_reg_fw_update(struct aw_device *aw_dev)
 {
@@ -579,6 +1012,7 @@ static int aw_dev_reg_fw_update(struct aw_device *aw_dev)
 	unsigned int read_val;
 	int ret = -1;
 	unsigned int init_volume = 0;
+	unsigned int efcheck_val = 0;
 	struct aw_int_desc *int_desc = &aw_dev->int_desc;
 	struct aw_profctrl_desc *profctrl_desc = &aw_dev->profctrl_desc;
 	struct aw_bstctrl_desc *bstctrl_desc = &aw_dev->bstctrl_desc;
@@ -655,6 +1089,16 @@ static int aw_dev_reg_fw_update(struct aw_device *aw_dev)
 			reg_val |= read_val;
 		}
 
+		if (reg_addr == aw_dev->efcheck_desc.reg) {
+			efcheck_val = reg_val & (~aw_dev->efcheck_desc.mask);
+			if (efcheck_val == aw_dev->efcheck_desc.or_val)
+				aw_dev->efuse_check = AW_EF_OR_CHECK;
+			else
+				aw_dev->efuse_check = AW_EF_AND_CHECK;
+
+			aw_dev_info(aw_dev->dev, "efuse check: %d", aw_dev->efuse_check);
+		}
+
 		if (reg_addr == aw_dev->vcalb_desc.vcalb_reg)
 			continue;
 
@@ -665,6 +1109,12 @@ static int aw_dev_reg_fw_update(struct aw_device *aw_dev)
 			(unsigned int)reg_val);
 		if (ret < 0)
 			break;
+	}
+
+	ret = aw_dev_set_vcalb(aw_dev);
+	if (ret < 0) {
+		aw_dev_err(aw_dev->dev, "can't set vcalb");
+		return ret;
 	}
 
 	aw_dev->ops.aw_get_volume(aw_dev, &init_volume);
@@ -789,104 +1239,6 @@ static void aw_dev_mute(struct aw_device *aw_dev, bool mute)
 	aw_dev_info(aw_dev->dev, "done");
 }
 
-static int aw_dev_get_icalk(struct aw_device *aw_dev, int16_t *icalk)
-{
-	int ret = -1;
-	unsigned int reg_val = 0;
-	uint16_t reg_icalk = 0;
-	uint16_t reg_icalkl = 0;
-	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
-
-	if (desc->icalkl_reg == AW_REG_NONE) {
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalk_reg, &reg_val);
-		reg_icalk = (uint16_t)reg_val & (~desc->icalk_reg_mask);
-	} else {
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalk_reg, &reg_val);
-		reg_icalk = (uint16_t)reg_val & (~desc->icalk_reg_mask);
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->icalkl_reg, &reg_val);
-		reg_icalkl = (uint16_t)reg_val & (~desc->icalkl_reg_mask);
-		reg_icalk = (reg_icalk >> desc->icalk_shift) | (reg_icalkl >> desc->icalkl_shift);
-	}
-
-	if (reg_icalk & (~desc->icalk_sign_mask))
-		reg_icalk = reg_icalk | (~desc->icalk_neg_mask);
-
-	*icalk = (int16_t)reg_icalk;
-
-	return ret;
-}
-
-static int aw_dev_get_vcalk(struct aw_device *aw_dev, int16_t *vcalk)
-{
-	int ret = -1;
-	unsigned int reg_val = 0;
-	uint16_t reg_vcalk = 0;
-	uint16_t reg_vcalkl = 0;
-	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
-
-	if (desc->vcalkl_reg == AW_REG_NONE) {
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalk_reg, &reg_val);
-		reg_vcalk = (uint16_t)reg_val & (~desc->vcalk_reg_mask);
-	} else {
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalk_reg, &reg_val);
-		reg_vcalk = (uint16_t)reg_val & (~desc->vcalk_reg_mask);
-		ret = aw_dev->ops.aw_i2c_read(aw_dev, desc->vcalkl_reg, &reg_val);
-		reg_vcalkl = (uint16_t)reg_val & (~desc->vcalkl_reg_mask);
-		reg_vcalk = (reg_vcalk >> desc->vcalk_shift) | (reg_vcalkl >> desc->vcalkl_shift);
-	}
-
-	if (reg_vcalk & (~desc->vcalk_sign_mask))
-		reg_vcalk = reg_vcalk | (~desc->vcalk_neg_mask);
-
-	*vcalk = (int16_t)reg_vcalk;
-
-	return ret;
-}
-
-static int aw_dev_set_vcalb(struct aw_device *aw_dev)
-{
-	int ret = -1;
-	unsigned int reg_val;
-	int vcalb;
-	int icalk;
-	int vcalk;
-	int16_t icalk_val = 0;
-	int16_t vcalk_val = 0;
-
-	struct aw_vcalb_desc *desc = &aw_dev->vcalb_desc;
-
-	if (desc->icalk_reg == AW_REG_NONE || desc->vcalb_reg == AW_REG_NONE) {
-		aw_dev_info(aw_dev->dev, "REG None!");
-		return 0;
-	}
-
-	ret = aw_dev_get_icalk(aw_dev, &icalk_val);
-	if (ret < 0)
-		return ret;
-
-	ret = aw_dev_get_vcalk(aw_dev, &vcalk_val);
-	if (ret < 0)
-		return ret;
-
-	icalk = desc->cabl_base_value + desc->icalk_value_factor * icalk_val;
-	vcalk = desc->cabl_base_value + desc->vcalk_value_factor * vcalk_val;
-	if (!vcalk) {
-		aw_dev_err(aw_dev->dev, "vcalk is 0");
-		return -EINVAL;
-	}
-
-	vcalb = desc->vcal_factor * icalk / vcalk;
-
-	reg_val = (unsigned int)vcalb;
-	aw_dev_info(aw_dev->dev, "icalk=%d, vcalk=%d, vcalb=%d, reg_val=0x%04x",
-			icalk, vcalk, vcalb, reg_val);
-
-	ret =  aw_dev->ops.aw_i2c_write(aw_dev, desc->vcalb_reg, reg_val);
-
-	aw_dev_info(aw_dev->dev, "done");
-
-	return ret;
-}
 
 int aw_dev_get_int_status(struct aw_device *aw_dev, uint16_t *int_status)
 {
@@ -1186,8 +1538,6 @@ int aw_device_irq_reinit(struct aw_device *aw_dev)
 	if (ret < 0)
 		return ret;
 
-	/*update vcalb*/
-	aw_dev_set_vcalb(aw_dev);
 
 	return 0;
 }
@@ -1217,10 +1567,10 @@ int aw_device_init(struct aw_device *aw_dev, struct aw_container *aw_cfg)
 	if (ret < 0)
 		return ret;
 
-	ret = aw_dev_set_vcalb(aw_dev);
-	if (ret < 0) {
-		aw_dev_err(aw_dev->dev, "can't set vcalb");
-		return ret;
+	if (aw_dev->ops.aw_frcset_check) {
+		ret = aw_dev->ops.aw_frcset_check(aw_dev);
+		if (ret)
+			return ret;
 	}
 
 	aw_dev->status = AW_DEV_PW_ON;
@@ -1479,6 +1829,11 @@ int aw_dev_get_spin(int *spin_mode)
 	return aw_dsp_read_spin(spin_mode);
 }
 
+int aw_dev_set_algo_prof_data(struct aw_device *aw_dev, void *prof_data, unsigned int prof_len)
+{
+	return aw_dsp_set_algo_prof_data(aw_dev, prof_data, prof_len);
+}
+
 int aw_dev_set_algo_prof(struct aw_device *aw_dev, int prof_id)
 {
 	return aw_dsp_set_algo_prof(aw_dev, prof_id);
@@ -1500,7 +1855,7 @@ int aw_dev_set_spin_param(struct aw_device *aw_dev, uint32_t enable, uint32_t re
 	return aw_dsp_set_spin_param(aw_dev, enable, relase_time);
 }
 
-int aw_dev_get_spin_param(struct aw_device *aw_dev, uint32_t enable, uint32_t relase_time)
+int aw_dev_get_spin_param(struct aw_device *aw_dev, uint32_t *enable, uint32_t *relase_time)
 {
 	return aw_dsp_get_spin_param(aw_dev, enable, relase_time);
 }

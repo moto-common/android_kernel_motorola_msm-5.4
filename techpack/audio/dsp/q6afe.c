@@ -29,6 +29,8 @@
 #define AFE_PARAM_ID_AWDSP_RX_SET_ENABLE	(0x10013D11)
 #define AFE_PARAM_ID_AWDSP_TX_SET_ENABLE	(0x10013D13)
 #define AFE_PARAM_ID_AWDSP_RX_PARAMS            (0x10013D12)
+
+void aw_cal_unmap_memory(void);
 #endif /* #ifdef CONFIG_SND_SOC_AWINIC_AW882XX */
 #define WAKELOCK_TIMEOUT	5000
 #define AFE_CLK_TOKEN	1024
@@ -970,6 +972,10 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		return -EINVAL;
 	}
 	if (data->opcode == RESET_EVENTS) {
+		#ifdef CONFIG_SND_SOC_AWINIC_AW882XX
+			aw_cal_unmap_memory();
+		#endif /*CONFIG_SND_SOC_AWINIC_AW882XX*/
+
 		pr_debug("%s: reset event = %d %d apr[%pK]\n",
 			__func__,
 			data->reset_event, data->reset_proc, this_afe.apr);
@@ -3928,7 +3934,11 @@ int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
 
 	if (aw_cal->map_data.dma_buf == 0) {
 		/*Minimal chunk size is 8K*/
+#ifdef CONFIG_AW882XX_MAPSIZE_16K
+		aw_cal->map_data.map_size = SZ_16K;
+#else
 		aw_cal->map_data.map_size = SZ_8K;
+#endif
 		result = msm_audio_ion_alloc(&(aw_cal->map_data.dma_buf),
 				aw_cal->map_data.map_size,
 				&(aw_cal->cal_data.paddr),&len,
@@ -3954,8 +3964,11 @@ int aw_send_afe_cal_apr(uint32_t rx_port_id, uint32_t tx_port_id,
 		pr_err("%s: Invalid AFE port = 0x%x\n", __func__, port_id);
 		goto err;
 	}
-
+#ifdef CONFIG_AW882XX_MAPSIZE_16K
+	if (cmd_size > (SZ_16K - sizeof(struct param_hdr_v3))) {
+#else
 	if (cmd_size > (SZ_8K - sizeof(struct param_hdr_v3))) {
+#endif
 		pr_err("%s: Invalid payload size = %d\n", __func__, cmd_size);
 		result = -EINVAL;
 		goto err;

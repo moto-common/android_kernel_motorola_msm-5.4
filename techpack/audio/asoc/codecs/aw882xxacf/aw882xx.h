@@ -15,6 +15,9 @@
 #define AW882XX_LOAD_FW_DELAY_TIME	(0)
 #define AW_START_RETRIES	(5)
 #define AW882XX_RUNIN_TEST
+#define AW_ALGO_SKT_BIN		"aw_skt.bin"
+#define AW_DEFAULT_PRO_ID	(0xFFFFFFFF)
+
 
 #define AW_I2C_RETRIES			5	/* 5 times */
 #define AW_I2C_RETRY_DELAY		5	/* 5 ms */
@@ -69,6 +72,13 @@ struct aw882xx_scene_info {
 	int is_active;
 	int active_cnt;
 };
+
+enum {
+	AW_PARAMS_PATH_MODE = 0,
+	AW_PARAMS_DATA_MODE,
+};
+
+
 #endif
 
 
@@ -212,7 +222,7 @@ struct aw882xx {
 	int aw882xx_algo_prof_id;
 	int cur_algo_prof_id;
 #endif
-
+	unsigned int skt_prof_mode;
 
 	unsigned int fade_flag;
 	unsigned char index;
