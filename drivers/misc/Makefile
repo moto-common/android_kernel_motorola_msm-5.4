@@ -69,3 +69,4 @@ obj-y				+= pen/
 obj-$(CONFIG_MOTO_UTAGS) 	+= utag/
 obj-$(CONFIG_MMI_SYS_TEMP)	+= mmi_sys_temp/
 obj-$(CONFIG_LDO_VIBRATOR_MMI)	+= ldo_vibrator_mmi/
+obj-$(CONFIG_SX937X_CAPSENSE)		+= sx937x/

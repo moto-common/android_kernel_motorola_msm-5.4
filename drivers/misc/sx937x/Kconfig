@@ -1,0 +1,26 @@
+config SX937X_CAPSENSE
+	tristate "Semtech high performance CAP sensor"
+	default n
+	help
+	The SX9367x is a capacitive specific absorption rate (SAR) controller.
+
+config SX937X_CAPSENSE_USB_CAL
+	bool "Semtech SX937x USB Calibration"
+	depends on SX937X_CAPSENSE
+	default n
+	help
+	Say Y to enable USB calibration.
+
+config SX937X_CAPSENSE_USE_POWER_SUPPLY_ONLINE
+	bool "Use POWER_SUPPLY_PROP_ONLINE instead of POWER_SUPPLY_PROP_PRESENT"
+	depends on SX937X_CAPSENSE
+	default n
+	help
+	Say Y to use the POWER_SUPPLY_PROP_ONLINE prop instead of POWER_SUPPLY_PROP_PRESENT.
+
+config SX937X_CAPSENSE_FLIP_CAL
+	bool "Flip register values for SX937X"
+	depends on SX937X_CAPSENSE
+	default n
+	help
+	Say Y here if you want to flip register calibration values.
