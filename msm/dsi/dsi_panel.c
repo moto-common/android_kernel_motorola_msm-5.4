@@ -1192,7 +1192,7 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 		cmds = param_map_state->cmds->cmds;
 		count = param_map_state->cmds->count;
 
-		for (i =0; i < count; i++) {
+		for (i =0; i < count; i++, cmds++) {
 			payload = (u8 *)cmds->msg.tx_buf;
 			if(param_info->value == HBM_FOD_ON_STATE) {
 				if(payload[0] == lhbm_config->alpha_reg) {
@@ -1208,7 +1208,7 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 					DSI_INFO("%s: alpha [%x]=%x%x\n",
 					        __func__, payload[0], payload[1], payload[2]);
 					rc =  0;
-					goto end;
+					continue;
 				} else if(payload[0] == 0X51 &&
 					lhbm_config->dc_hybird_threshold != 0) {
 					if(lhbm_config->dbv_level < lhbm_config->dc_hybird_threshold) {
@@ -1232,7 +1232,6 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 				rc =  0;
 				goto end;
 			}
-			cmds++;
 		}
 	}
 
@@ -4457,6 +4456,14 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 				__func__, __LINE__, rc);
 			lhbm_config->enable = false;
 			return rc;
+		}
+
+		rc = utils->read_u32(utils->data,
+			"qcom,mdss-dsi-panel-local-hbm-DC-HYBIRD-THRESHOLD-BL",
+			&(lhbm_config->dc_hybird_threshold));
+		if (rc) {
+			DSI_ERR("%s:qcom,mdss-dsi-panel-local-hbm-DC-HYBIRD-THRESHOLD-BL is not defined, set it to 0\n", __func__);
+			lhbm_config->dc_hybird_threshold = 0;
 		}
 
 		lhbm_config->resend_lbhm_off = utils->read_bool(utils->data,
