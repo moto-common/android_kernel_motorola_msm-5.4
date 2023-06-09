@@ -34,7 +34,7 @@
 #include <linux/power_supply.h>
 #include <linux/sensors.h>
 #include <linux/input/sx937x.h> 	/* main struct, interrupt,init,pointers */
-#include "base.h"
+#include "../../base/base.h"
 
 #define LOG_TAG "[sar SX937x]: "
 
