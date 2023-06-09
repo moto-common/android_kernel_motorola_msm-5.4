@@ -277,6 +277,7 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= aw882xx/
 	obj-y	+= aw882xxacf/
 	obj-y	+= aw87xxx/
+	obj-y	+= fs1815/
 endif
 # Module information used by KBuild framework
 obj-$(CONFIG_WCD9XXX_CODEC_CORE) += wcd_core_dlkm.o

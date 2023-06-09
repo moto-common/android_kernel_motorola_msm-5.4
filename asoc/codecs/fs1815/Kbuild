@@ -1,0 +1,15 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+EXTRA_CFLAGS += -I$(TOP)/kernel/msm-5.4/techpack/audio/include
+EXTRA_CFLAGS += -I$(TOP)/kernel/msm-5.4/techpack/audio/include/uapi/
+
+ifdef CONFIG_SND_SOC_FS1815
+FS1815_OBJS += fs1815.o
+FS1815_OBJS += fsm_core.o
+FS1815_OBJS += fsm_firmware.o
+FS1815_OBJS += fsm_i2c.o
+FS1815_OBJS += fsm_misc.o
+endif
+
+obj-$(CONFIG_SND_SOC_FS1815) += fs1815_dlkm.o
+fs1815_dlkm-y := $(FS1815_OBJS)

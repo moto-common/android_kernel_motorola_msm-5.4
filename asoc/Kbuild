@@ -277,6 +277,10 @@ ifdef CONFIG_SND_SOC_AW87XXX
 CDEFINES +=     -DCONFIG_SND_SOC_AW87XXX
 endif
 
+ifdef CONFIG_SND_SOC_FS1815
+CDEFINES +=     -DCONFIG_SND_SOC_FS1815
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
