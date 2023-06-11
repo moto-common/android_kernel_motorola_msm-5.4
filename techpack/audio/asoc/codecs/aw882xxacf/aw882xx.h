@@ -52,7 +52,6 @@ enum aw882xx_int_type {
 	INT_TYPE_OTHI = 0x8,
 };
 
-#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 enum {
 	AW_ALGO_PROFILE_ID_0 = 0,
 	AW_ALGO_PROFILE_ID_1,
@@ -77,10 +76,6 @@ enum {
 	AW_PARAMS_PATH_MODE = 0,
 	AW_PARAMS_DATA_MODE,
 };
-
-
-#endif
-
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 1)
 #define AW_KERNEL_VER_OVER_4_19_1
@@ -211,7 +206,6 @@ struct aw882xx {
 	int pstream;
 	int cstream;
 	int aw882xx_ramp_status;    /* ramp status */
-#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	int aw882xx_algo_cali;
 	int aw882xx_algo_bypass;
 	int aw882xx_algo_handset;
@@ -221,7 +215,6 @@ struct aw882xx {
 	int aw882xx_algo_music_fasttrack;
 	int aw882xx_algo_prof_id;
 	int cur_algo_prof_id;
-#endif
 	unsigned int skt_prof_mode;
 
 	unsigned int fade_flag;
