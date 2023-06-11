@@ -73,6 +73,7 @@ config RHODEC_DTB
         depends on ARCH_QCOM
         default n
         bool "RHODEC DTBs"
+        select CAMERA_CCI_MASTER_CHANGE
         help
                 Only include RHODEC specific DTBs to limit the number that
                 get built during kernel compilation.
@@ -98,6 +99,7 @@ config PENANG_DTB
 	depends on ARCH_QCOM
 	default n
 	bool "PENANG DTBs"
+        select CAMERA_CCI_MASTER_CHANGE
 	help
 		Only include PENANG specific DTBs to limit the number that
 		get built during kernel compilation.
@@ -106,6 +108,7 @@ config PNANGN_DTB
 	depends on ARCH_QCOM
 	default n
 	bool "PNANGN DTBs"
+        select CAMERA_CCI_MASTER_CHANGE
 	help
 		Only include PNANGN specific DTBs to limit the number that
 		get built during kernel compilation.
@@ -130,6 +133,7 @@ config RHODEI_DTB
     depends on ARCH_QCOM
     default n
     bool "RHODEI DTBs"
+    select CAMERA_CCI_MASTER_CHANGE
     help
         Only include RHODEI specific DTBs to limit the number that
         get built during kernel compilation.
