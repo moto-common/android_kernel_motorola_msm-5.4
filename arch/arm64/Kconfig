@@ -1901,8 +1901,15 @@ config CAM_SENSOR_PROBE_RETRY
         help
         Add retries for sensor id matching
 
+config CAMERA_SUB_DEVICE_PROBE
+	bool "For cam sub device probe after sensor"
+	default n
+	help
+	Enable it to probe cam sub devices after sensor
+
 config CAMERA_CCI_MASTER_CHANGE
 	bool "For cam cci master chance"
+        depends on CAMERA_SUB_DEVICE_PROBE
 	default n
 	help
 	Enable it to switch cci master i2c address.
