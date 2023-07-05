@@ -24,6 +24,12 @@
 #include "adsp_err.h"
 #include "q6afecal-hwdep.h"
 
+#ifdef CONFIG_SND_SOC_FS1815
+#include <dsp/q6fsm-v3.h>
+#endif
+
+
+
 #ifdef CONFIG_SND_SOC_AWINIC_AW882XX
 #define AFE_MODULE_ID_AWDSP_TX			(0x10013D00)
 #define AFE_MODULE_ID_AWDSP_RX			(0x10013D01)
@@ -1159,6 +1165,18 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		return 0;
 		}
 #endif /*CONFIG_SND_SOC_AWINIC_AW882XX*/
+
+#ifdef CONFIG_SND_SOC_FS1815
+		if (!q6fsm_afe_callback(data->payload, data->payload_size)) {
+			atomic_set(&this_afe.state, 0);
+			if (afe_token_is_valid(data->token)) {
+				wake_up(&this_afe.wait[data->token]);
+				return 0;
+			} else {
+				return -EINVAL;
+			}
+		}
+#endif
 		if (rtac_make_afe_callback(data->payload,
 					   data->payload_size))
 			return 0;
@@ -4644,6 +4662,16 @@ static int afe_send_cmd_port_start(u16 port_id)
 	if (ret)
 		pr_err("%s: AFE enable for port 0x%x failed %d\n", __func__,
 		       port_id, ret);
+
+#ifdef CONFIG_SND_SOC_FS1815
+	//TODO:
+	// Set the monitor enable when:
+	// 1) Speaker PA type is matched
+	// 2) In speaker playback
+	// 3) The RX Port is the same as the one of speaker playback
+	if (port_id == Q6FSM_AFE_RX_PORT)
+		q6fsm_monitor_switch(true);
+#endif
 
 	return ret;
 }
@@ -9700,6 +9728,11 @@ int afe_close(int port_id)
 
 	memset(&stop, 0, sizeof(stop));
 
+#ifdef CONFIG_SND_SOC_FS1815
+	if (port_id == Q6FSM_AFE_RX_PORT)
+		q6fsm_monitor_switch(false);
+#endif
+
 	if (this_afe.apr == NULL) {
 		pr_err("%s: AFE is already closed\n", __func__);
 
@@ -12330,11 +12363,17 @@ int __init afe_init(void)
 	this_afe.event_notifier.notifier_call  = afe_aud_event_notify;
 	msm_aud_evt_blocking_register_client(&this_afe.event_notifier);
 
+#ifdef CONFIG_SND_SOC_FS1815
+	q6fsm_afe_init();
+#endif
 	return 0;
 }
 
 void afe_exit(void)
 {
+#ifdef CONFIG_SND_SOC_FS1815
+	q6fsm_afe_deinit();
+#endif
 	if (this_afe.apr) {
 		apr_reset(this_afe.apr);
 		atomic_set(&this_afe.state, 0);

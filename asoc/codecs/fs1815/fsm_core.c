@@ -13,6 +13,12 @@ static int fsm_try_init(void);
 static int g_dev_inited = 0;
 
 static atomic_t fsm_amp_switch;
+static atomic_t fsm_adsp_enable;
+
+
+//include "q6fsm-v3.h"
+extern int q6fsm_set_rotation(int angle);
+extern int q6fsm_set_rx_enable(int enable);
 
 static LIST_HEAD(fsm_dev_list);
 #define fsm_list_init(fsm_dev) \
@@ -1613,6 +1619,64 @@ int fsm_init_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+int fsm_rotation_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	fsm_config_t *cfg = fsm_get_config();
+	if (!cfg) {
+		ucontrol->value.integer.value[0] = -1;
+		return 0;
+	}
+
+	ucontrol->value.integer.value[0] = cfg->next_angle;
+
+	return 0;
+}
+
+int fsm_rotation_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	fsm_config_t *cfg = fsm_get_config();
+	int angle = ucontrol->value.integer.value[0];
+
+	if(!cfg){
+		pr_err("cfg is null");
+		return 0;
+	}
+
+	pr_info("angle: %d", angle);
+	if(q6fsm_set_rotation(angle) == 0){
+		cfg->next_angle = angle;
+	}
+
+	return 0;
+}
+
+int fsm_adsp_enable_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int enable = atomic_read(&fsm_adsp_enable);
+
+	ucontrol->value.integer.value[0] = enable;
+	pr_info("get: %s", (enable) ? "Enable" : "Disable");
+
+	return 0;
+}
+
+int fsm_adsp_enable_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int enable = ucontrol->value.integer.value[0];
+
+	pr_info("switch: %s", enable ? "Enable" : "Disable");
+
+	if(q6fsm_set_rx_enable(enable) == 0){
+		atomic_set(&fsm_adsp_enable, enable);
+	}
+
+	return 0;
+}
+
 const struct snd_kcontrol_new fsm_snd_controls[] =
 {
 	SOC_SINGLE_EXT("FSM_Scene", SND_SOC_NOPM, 0, FSM_SCENE_MAX, 0,
@@ -1621,6 +1685,10 @@ const struct snd_kcontrol_new fsm_snd_controls[] =
 			fsm_amp_switch_get, fsm_amp_switch_put),
 	SOC_SINGLE_EXT("FSM_Init", SND_SOC_NOPM, 0, 1, 0,
 			fsm_init_get, fsm_init_put),
+	SOC_SINGLE_EXT("FSM_Rotation", SND_SOC_NOPM, 0, 360, 0,
+			fsm_rotation_get, fsm_rotation_put),
+	SOC_SINGLE_EXT("FSM_ADSP_Enable", SND_SOC_NOPM, 0, 1, 0,
+			fsm_adsp_enable_get, fsm_adsp_enable_put),
 };
 
 void fsm_add_codec_controls(struct snd_soc_codec *codec)
