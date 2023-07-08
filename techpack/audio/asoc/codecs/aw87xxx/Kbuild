@@ -1,0 +1,16 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+EXTRA_CFLAGS += -I$(TOP)/kernel/msm-5.4/techpack/audio/include
+EXTRA_CFLAGS += -I$(TOP)/kernel/msm-5.4/techpack/audio/include/uapi/
+
+ifdef CONFIG_SND_SOC_AW87XXX
+AW87XXX_OBJS += aw87xxx.o
+AW87XXX_OBJS += aw87xxx_device.o
+AW87XXX_OBJS += aw87xxx_monitor.o
+AW87XXX_OBJS += aw87xxx_bin_parse.o
+AW87XXX_OBJS += aw87xxx_dsp.o
+AW87XXX_OBJS += aw87xxx_acf_bin.o
+endif
+
+obj-$(CONFIG_SND_SOC_AW87XXX) += aw87xxx_dlkm.o
+aw87xxx_dlkm-y := $(AW87XXX_OBJS)
