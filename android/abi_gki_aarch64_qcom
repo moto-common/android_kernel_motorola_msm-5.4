@@ -1100,6 +1100,7 @@
   __hrtimer_get_remaining
   hrtimer_init
   hrtimer_init_sleeper
+  hrtimer_sleeper_start_expires
   hrtimer_start_range_ns
   hrtimer_try_to_cancel
   hvc_alloc
@@ -1415,6 +1416,7 @@
   kthread_stop
   kthread_unpark
   kthread_worker_fn
+  ktime_add_safe
   ktime_get
   ktime_get_mono_fast_ns
   ktime_get_raw_ts64
@@ -2359,6 +2361,7 @@
   snd_pcm_stop
   _snd_pcm_stream_lock_irqsave
   snd_pcm_stream_unlock_irqrestore
+  snd_soc_add_card_controls
   snd_soc_add_component_controls
   snd_soc_bytes_tlv_callback
   snd_soc_card_get_kcontrol
@@ -2499,6 +2502,7 @@
   strrchr
   strreplace
   strscpy
+  strscpy_pad
   strsep
   strstr
   submit_bh

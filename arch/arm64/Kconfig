@@ -596,6 +596,22 @@ config ARM64_ERRATUM_1542419
 
 	  If unsure, say Y.
 
+config ARM64_ERRATUM_1742098
+	bool "Cortex-A57/A72: 1742098: ELR recorded incorrectly on interrupt taken between cryptographic instructions in a sequence"
+	depends on COMPAT
+	default y
+	help
+	  This option removes the AES hwcap for aarch32 user-space to
+	  workaround erratum 1742098 on Cortex-A57 and Cortex-A72.
+
+	  Affected parts may corrupt the AES state if an interrupt is
+	  taken between a pair of AES instructions. These instructions
+	  are only present if the cryptography extensions are present.
+	  All software should have a fallback implementation for CPUs
+	  that don't implement the cryptography extensions.
+
+	  If unsure, say Y.
+
 config CAVIUM_ERRATUM_22375
 	bool "Cavium erratum 22375, 24313"
 	default y
@@ -1887,6 +1903,12 @@ config SND_SOC_AW87XXX
         help
           This option enables support for AW87XXX Smart K PA.
 
+config SND_SOC_FS1815
+        tristate "SoC Audio for fs1815 Smart K PA"
+        depends on I2C
+        help
+          This option enables support for fs1815 K PA.
+
 config CAMERA_FLASH_PWM
         bool "control flash"
         default n
@@ -1941,3 +1963,25 @@ config VIBRATOR_NOISE_CAMERA
         default n
         help
         Enable it only for products that need camera vibrator noise control.
+
+config CAMERA_FLASH_IIC_COMPATIBLE
+        bool "auto select iic flash suppliers"
+        default n
+        help
+        Enable it, this is automatically selected flash supplers.
+
+config MOT_DONGWOON_OIS_AF_DRIFT
+        bool "dongwoon ois af drift"
+        default n
+        help
+        Enable it will support dongwoon ois af drift.
+
+config MOT_SENSOR_PRE_POWERUP
+        bool "For sensor power up and initialization early"
+        default n
+        help
+        Enable it to power up and initialise early.
+
+config MOT_USB_DEBUG_LOG
+	bool "For usb debug log in factiry SW"
+	default n

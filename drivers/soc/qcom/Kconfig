@@ -113,6 +113,38 @@ config PNANGN_DTB
 		Only include PNANGN specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config BANGKK_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "BANGKK DTBs"
+        help
+                Only include PENANG specific DTBs to limit the number that
+                get built during kernel compilation.
+
+config FOGOR_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "FOGOR DTBs"
+        help
+                Only include FOGOR specific DTBs to limit the number that
+                get built during kernel compilation.
+
+config FOGO_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "FOGO DTBs"
+        help
+                Only include FOGO specific DTBs to limit the number that
+                get built during kernel compilation.
+
+config PENANGB_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "PENANGB DTBs"
+        help
+                Only include PENANG specific DTBs to limit the number that
+                get built during kernel compilation.
+
 config RHODEP_DTB
     depends on ARCH_QCOM
     default n
@@ -295,6 +327,7 @@ config QCOM_RIMPS
 config QCOM_LLCC
 	tristate "Qualcomm Technologies, Inc. LLCC driver"
 	depends on ARCH_QCOM || COMPILE_TEST
+	select REGMAP_MMIO
 	help
 	  Qualcomm Technologies, Inc. platform specific
 	  Last Level Cache Controller(LLCC) driver. This provides interfaces

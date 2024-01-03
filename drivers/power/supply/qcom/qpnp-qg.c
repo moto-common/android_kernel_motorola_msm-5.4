@@ -1103,12 +1103,12 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 		goto done;
 	}
 
-	if (chip->dt.cp_use_internal_qg) {
+	if ((chip->dt.cp_use_internal_qg) && (chip->msoc < chip->dt.cp_chrg_soc_limit)) {
 		rc = qg_write_iio_chan(chip, CP_CHARGING_ENABLED, 0);
 		if (rc < 0)
 			pr_err("Failed to force disable cp rc=%d\n", rc);
 		else
-			qg_dbg(chip, QG_DEBUG_STATUS, "disable cp\n");
+			qg_dbg(chip, QG_DEBUG_STATUS, "disable cp, msoc =%d\n",chip->msoc);
 		msleep(1000);
 	}
 
@@ -1200,12 +1200,12 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 		msleep(200);
 	}
 
-	if (chip->dt.cp_use_internal_qg) {
+	if ((chip->dt.cp_use_internal_qg) && (chip->msoc < chip->dt.cp_chrg_soc_limit)) {
 		rc = qg_write_iio_chan(chip, CP_CHARGING_ENABLED, 1);
 		if (rc < 0)
 			pr_err("Failed to force enable cp rc=%d\n", rc);
 		else
-			qg_dbg(chip, QG_DEBUG_STATUS, "enable cp\n");
+			qg_dbg(chip, QG_DEBUG_STATUS, "enable cp, msoc =%d\n",chip->msoc);
 	}
 
 	rc = qg_process_esr_data(chip);
@@ -1785,7 +1785,7 @@ static const char *qg_get_battery_type(struct qpnp_qg *chip)
 }
 
 #define DEBUG_BATT_SOC		67
-#define BATT_MISSING_SOC	50
+#define BATT_MISSING_SOC	10
 #define EMPTY_SOC		0
 #define FULL_SOC		100
 static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
@@ -1845,8 +1845,10 @@ static int qg_get_charge_counter(struct qpnp_qg *chip, int *charge_counter)
 		return rc;
 	}
 
-	cc_soc = CAP(0, 100, DIV_ROUND_CLOSEST(chip->cc_soc, 100));
-	*charge_counter = div_s64(temp * cc_soc, 100);
+	cc_soc = CAP(0, 100*100, chip->cc_soc);
+	*charge_counter = div_s64(temp * cc_soc, 10000);
+
+	pr_info("charge-counter:%d\n",*charge_counter);
 
 	return 0;
 }
@@ -4392,6 +4394,13 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 					"qcom,esr-discharge-enable");
 	chip->dt.cp_use_internal_qg = of_property_read_bool(node,
 					"mmi,cp-use-internal-qg");
+
+	rc = of_property_read_u32(node, "mmi,cp-chrg-soc-limit", &temp);
+	if (rc < 0)
+		chip->dt.cp_chrg_soc_limit = 100;
+	else
+		chip->dt.cp_chrg_soc_limit = temp;
+
 	rc = of_property_read_u32(node, "qcom,esr-qual-current-ua", &temp);
 	if (rc < 0)
 		chip->dt.esr_qual_i_ua = DEFAULT_ESR_QUAL_CURRENT_UA;
