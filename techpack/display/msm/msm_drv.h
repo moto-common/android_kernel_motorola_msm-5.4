@@ -426,6 +426,7 @@ struct msm_display_dsc_info {
 	u32 dsc_4hsmerge_alignment;
 	bool half_panel_pu;
 	int datatype;
+	bool dsc_novatek_ic;
 };
 
 
@@ -989,8 +990,6 @@ struct msm_drm_private {
 	struct mutex vm_client_lock;
 	struct list_head vm_client_list;
 	struct notifier_block msm_drv_notifier;
-
-	struct msm_idle idle;
 };
 
 /* get struct msm_kms * from drm_device * */

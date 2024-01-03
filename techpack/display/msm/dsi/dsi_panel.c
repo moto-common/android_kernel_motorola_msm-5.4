@@ -630,6 +630,58 @@ error:
 	return rc;
 }
 
+static int dsi_panel_dfps_tx_cmd_set(struct dsi_panel *panel,
+				enum dsi_cmd_set_type type, bool async)
+{
+	int rc = 0, i = 0;
+	ssize_t len;
+	struct dsi_cmd_desc *cmds;
+	u32 count;
+	enum dsi_cmd_set_state state;
+	struct dsi_display_mode *mode;
+	const struct mipi_dsi_host_ops *ops = panel->host->ops;
+
+	if (!panel || !panel->cur_mode)
+		return -EINVAL;
+
+	mode = panel->cur_mode;
+
+	cmds = mode->priv_info->cmd_sets[type].cmds;
+	count = mode->priv_info->cmd_sets[type].count;
+	state = mode->priv_info->cmd_sets[type].state;
+	SDE_EVT32(type, state, count);
+
+	if (count == 0) {
+		DSI_DEBUG("[%s] No commands to be sent for state(%d)\n",
+			 panel->name, type);
+		goto error;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (state == DSI_CMD_SET_STATE_LP)
+			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
+
+		if (cmds->last_command)
+			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+
+		if (async) cmds->msg.flags |= MIPI_DSI_MSG_ASYNC_OVERRIDE;
+		else cmds->msg.flags &= ~MIPI_DSI_MSG_ASYNC_OVERRIDE;
+
+		len = ops->transfer(panel->host, &cmds->msg);
+		if (len < 0) {
+			rc = len;
+			DSI_ERR("failed to set cmds(%d), rc=%d\n", type, rc);
+			goto error;
+		}
+		if (cmds->post_wait_ms)
+			usleep_range(cmds->post_wait_ms*1000,
+					((cmds->post_wait_ms*1000)+10));
+		cmds++;
+	}
+error:
+	return rc;
+}
+
 static int dsi_panel_pinctrl_deinit(struct dsi_panel *panel)
 {
 	int rc = 0;
@@ -1140,23 +1192,37 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 		cmds = param_map_state->cmds->cmds;
 		count = param_map_state->cmds->count;
 
-		for (i =0; i < count; i++) {
+		for (i =0; i < count; i++, cmds++) {
 			payload = (u8 *)cmds->msg.tx_buf;
-			if(param_info->value == HBM_FOD_ON_STATE &&
-				payload[0] == lhbm_config->alpha_reg) {
-				if(lhbm_config->dbv_level >lhbm_config->alpha_size) {
-					DSI_ERR("unsupport dbv level %d on local hbm\n", lhbm_config->dbv_level);
-					rc = -EINVAL;
-					goto end;
-				}
+			if(param_info->value == HBM_FOD_ON_STATE) {
+				if(payload[0] == lhbm_config->alpha_reg) {
+					if(lhbm_config->dbv_level >lhbm_config->alpha_size) {
+						DSI_ERR("unsupport dbv level %d on local hbm\n", lhbm_config->dbv_level);
+						rc = -EINVAL;
+						goto end;
+					}
 
-				alpha = lhbm_config->alpha[lhbm_config->dbv_level];
-				payload[1] = (alpha&0xff00)>>8;
-				payload[2] = alpha&0xff;
-				DSI_INFO("%s: alpha [%x]=%x%x\n",
-				        __func__, payload[0], payload[1], payload[2]);
-				rc =  0;
-				goto end;
+					alpha = lhbm_config->alpha[lhbm_config->dbv_level];
+					payload[1] = (alpha&0xff00)>>8;
+					payload[2] = alpha&0xff;
+					DSI_INFO("%s: alpha [%x]=%x%x\n",
+					        __func__, payload[0], payload[1], payload[2]);
+					rc =  0;
+					continue;
+				} else if(payload[0] == 0X51 &&
+					lhbm_config->dc_hybird_threshold != 0) {
+					if(lhbm_config->dbv_level < lhbm_config->dc_hybird_threshold) {
+						payload[1] = (lhbm_config->dc_hybird_threshold & 0xff00) >> 8;
+						payload[2] = lhbm_config->dc_hybird_threshold & 0xff;
+
+					} else {
+						payload[1] = (lhbm_config->dbv_level & 0xff00) >> 8;
+						payload[2] = lhbm_config->dbv_level & 0xff;
+					}
+					DSI_INFO("%s: [%x]=%x%x\n",
+						__func__, payload[0], payload[1], payload[2]);
+					continue;
+				}
 			} else if(param_info->value == HBM_OFF_STATE &&
 				payload[0] == 0x51) {
 				payload[1] = (lhbm_config->dbv_level&0xff00)>>8;
@@ -1166,7 +1232,6 @@ static int dsi_panel_set_local_hbm_param(struct dsi_panel *panel,
 				rc =  0;
 				goto end;
 			}
-			cmds++;
 		}
 	}
 
@@ -1174,6 +1239,48 @@ end:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 };
+
+static bool dsi_panel_lhbm_not_allowed_list(struct dsi_panel *panel)
+{
+	int i;
+
+	for (i = 0; i < panel->lhbm_config.lhbm_not_allowed_fps_list_len; i++) {
+		if (panel->lhbm_config.lhbm_not_allowed_fps_list[i] ==
+			panel->cur_mode->timing.refresh_rate)
+			return true;
+	}
+
+	return false;
+}
+
+static int dsi_panel_lhbm_waitfor_fps_valid(struct dsi_panel *panel)
+{
+	u32 count = 30;
+	u32 poll_interval = 1;
+
+	count = panel->lhbm_config.lhbm_wait_for_fps_count;
+	if (count == 0)
+		return 0;
+
+	if (panel->lhbm_config.lhbm_wait_for_fps_interval)
+		poll_interval = panel->lhbm_config.lhbm_wait_for_fps_interval;
+
+	pr_info("%s count %d, interval %d\n", __func__, count, poll_interval);
+	while(dsi_panel_lhbm_not_allowed_list(panel)) {
+		if (!count) {
+			pr_warn("%s: it is timeout, and current_fps = %d\n", __func__,
+				panel->cur_mode->timing.refresh_rate);
+			break;
+		} else if (count > poll_interval) {
+			usleep_range(poll_interval * 1000, poll_interval *1000);
+			count -= poll_interval;
+		} else {
+			usleep_range(count * 1000, count *1000);
+			count = 0;
+		}
+	}
+	return 0;
+}
 
 static int dsi_panel_set_hbm(struct dsi_panel *panel,
                         struct msm_param_info *param_info)
@@ -1210,6 +1317,9 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
 		if(lhbm_config->enable && param_info->value != HBM_ON_STATE) {
 			dsi_panel_set_local_hbm_param(panel, param_info, lhbm_config);
 		}
+
+	if (panel->lhbm_config.lhbm_wait_for_fps_valid && param_info->value == HBM_FOD_ON_STATE)
+		dsi_panel_lhbm_waitfor_fps_valid(panel);
 
 		rc = dsi_panel_send_param_cmd(panel, param_info);
 		if (rc < 0) {
@@ -1294,6 +1404,7 @@ int dsi_panel_set_param(struct dsi_panel *panel,
 			break;
 		case PARAM_ACL_ID :
 			dsi_panel_set_acl(panel, param_info);
+			break;
 		case PARAM_DC_ID :
 			dsi_panel_set_dc(panel, param_info);
 			break;
@@ -2153,8 +2264,15 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 			dfps_caps->max_refresh_rate = dfps_caps->dfps_list[i];
 	}
 
+	dfps_caps->dfps_send_cmd_with_te_async = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-pan-dfps-send-command-with-te-async");
+
 	dfps_caps->dfps_send_cmd_support = utils->read_bool(utils->data,
-			"qcom,mdss-dsi-pan-dpfs-send-command");
+			"qcom,mdss-dsi-pan-dfps-send-command");
+	if(dfps_caps->dfps_send_cmd_support) {
+		dfps_caps->panel_on_fps = dfps_caps->dfps_list[0];
+		dfps_caps->current_fps = dfps_caps->panel_on_fps;
+	}
 
 error:
 	return rc;
@@ -2438,6 +2556,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command",
 	"qcom,mdss-dsi-cabc-mv-command",
 	"qcom,mdss-dsi-cabc-dis-command",
+	"qcom,mdss-dsi-dfps-120-command",
 	"qcom,mdss-dsi-dfps-90-command",
 	"qcom,mdss-dsi-dfps-60-command",
 	"qcom,mdss-dsi-dc-on-command",
@@ -2484,6 +2603,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command-state",
 	"qcom,mdss-dsi-cabc-mv-command-state",
 	"qcom,mdss-dsi-cabc-dis-command-state",
+	"qcom,mdss-dsi-dfps-120-command-state",
 	"qcom,mdss-dsi-dfps-90-command-state",
 	"qcom,mdss-dsi-dfps-60-command-state",
 	"qcom,mdss-dsi-dc-on-command-state",
@@ -3497,12 +3617,25 @@ static int dsi_panel_parse_dsc_params(struct dsi_display_mode *mode,
 	priv_info->dsc.config.slice_count = DIV_ROUND_UP(intf_width,
 		priv_info->dsc.config.slice_width);
 
-	rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
-			priv_info->dsc.scr_rev);
-	if (rc) {
-		DSI_DEBUG("failed populating dsc params\n");
-		rc = -EINVAL;
-		goto error;
+	priv_info->dsc.dsc_novatek_ic = utils->read_bool(utils->data,
+		"qcom,mdss-dsc-novateck-ic");
+	if (priv_info->dsc.dsc_novatek_ic) {
+		rc = sde_dsc_populate_dsc_config_nt(&priv_info->dsc.config,
+				priv_info->dsc.scr_rev);
+		if (rc) {
+			DSI_DEBUG("failed populating dsc params(nt)\n");
+			rc = -EINVAL;
+			goto error;
+		}
+
+	} else {
+		rc = sde_dsc_populate_dsc_config(&priv_info->dsc.config,
+				priv_info->dsc.scr_rev);
+		if (rc) {
+			DSI_DEBUG("failed populating dsc params\n");
+			rc = -EINVAL;
+			goto error;
+		}
 	}
 
 	rc = sde_dsc_populate_dsc_private_params(&priv_info->dsc, intf_width);
@@ -4326,13 +4459,57 @@ static int dsi_panel_parse_local_hbm_config(struct dsi_panel *panel)
 			return rc;
 		}
 
+		rc = utils->read_u32(utils->data,
+			"qcom,mdss-dsi-panel-local-hbm-DC-HYBIRD-THRESHOLD-BL",
+			&(lhbm_config->dc_hybird_threshold));
+		if (rc) {
+			DSI_ERR("%s:qcom,mdss-dsi-panel-local-hbm-DC-HYBIRD-THRESHOLD-BL is not defined, set it to 0\n", __func__);
+			lhbm_config->dc_hybird_threshold = 0;
+		}
+
 		lhbm_config->resend_lbhm_off = utils->read_bool(utils->data,
 			"qcom,mdss-dsi-panel-resend-local-hbm-off");
+
+		lhbm_config->lhbm_wait_for_fps_valid = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-panel-lhbm-wait-fps-valid");
+
+		utils->read_u32(utils->data,
+				"qcom,mdss-dsi-panel-local-hbm-wait-fps-count",
+				&(lhbm_config->lhbm_wait_for_fps_count));
+
+		utils->read_u32(utils->data,
+				"qcom,mdss-dsi-panel-local-hbm-wait-fps-interval",
+				&(lhbm_config->lhbm_wait_for_fps_interval));
+
+		lhbm_config->lhbm_not_allowed_fps_list_len = utils->count_u32_elems(utils->data,
+					  "qcom,mdss-dsi-panel-lhbm-not-allowed-fps-list");
+		if (lhbm_config->lhbm_not_allowed_fps_list_len >= 1) {
+			lhbm_config->lhbm_not_allowed_fps_list = kcalloc(lhbm_config->lhbm_not_allowed_fps_list_len,
+					sizeof(u32), GFP_KERNEL);
+			if (!lhbm_config->lhbm_not_allowed_fps_list )
+				return -ENOMEM;
+
+			rc = utils->read_u32_array(utils->data,
+					"qcom,mdss-dsi-panel-lhbm-not-allowed-fps-list",
+					lhbm_config->lhbm_not_allowed_fps_list,
+					lhbm_config->lhbm_not_allowed_fps_list_len);
+			if (rc) {
+				DSI_ERR("[%s] lhbm not allowed fps list parse failed\n", panel->name);
+				return -EINVAL;
+			}
+		}
+
 	} else {
 		DSI_INFO("%s:%d, no local hbm config\n",
 				__func__, __LINE__);
 	}
 	return 0;
+}
+
+static void dsi_panel_lhbm_config_deinit(struct dsi_panel_lhbm_config *lhbm_config)
+{
+	if (lhbm_config->alpha)
+		kfree(lhbm_config->alpha);
 }
 
 static void dsi_panel_update_util(struct dsi_panel *panel,
@@ -4736,6 +4913,8 @@ void dsi_panel_put(struct dsi_panel *panel)
 
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
+
+	dsi_panel_lhbm_config_deinit(&panel->lhbm_config);
 
 	kfree(panel);
 }
@@ -6179,6 +6358,7 @@ int dsi_panel_dfps_send_cmd(struct dsi_panel *panel)
 	enum dsi_cmd_set_type type = DSI_CMD_SET_DFPS_CMD_60;
 	char cmd_set_prop[64];
 	int rc = 0;
+	bool async = false;
 
 	if (!panel || !panel->cur_mode)
 		return -EINVAL;
@@ -6196,13 +6376,22 @@ int dsi_panel_dfps_send_cmd(struct dsi_panel *panel)
 		}
 	}
 
-	DSI_INFO("prop %s refresh_rate %d type %d\n", cmd_set_prop, refresh_rate, type);
+	//DSI_INFO("prop %s refresh_rate %d type %d\n", cmd_set_prop, refresh_rate, type);
+	if (panel->dfps_caps.dfps_send_cmd_with_te_async) {
+		if ((panel->dfps_caps.current_fps == 60)||(panel->dfps_caps.current_fps == 90)) async = false;
+		else async = true;
+	}
 
-	rc = dsi_panel_tx_cmd_set(panel, type);
+	DSI_INFO("fps switch %d to %d , async %d\n",panel->dfps_caps.current_fps, refresh_rate, async);
+
+	rc = dsi_panel_dfps_tx_cmd_set(panel, type, async);
 	if (rc) {
 		DSI_ERR("[%s] failed to send %s cmds, rc=%d\n",
 		       panel->name, cmd_set_prop_map[type], rc);
+	} else {
+		panel->dfps_caps.current_fps= refresh_rate;
 	}
+
 	mutex_unlock(&panel->panel_lock);
 
 	return rc;

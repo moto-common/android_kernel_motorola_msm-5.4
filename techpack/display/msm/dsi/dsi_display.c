@@ -3997,6 +3997,12 @@ static int dsi_display_clocks_init(struct dsi_display *display)
 
 	num_clk = dsi_display_get_clocks_count(display, dsi_clock_name);
 
+	if (num_clk <= 0) {
+		rc = num_clk;
+		DSI_WARN("failed to read %s, rc = %d\n", dsi_clock_name, num_clk);
+		goto error;
+	}
+
 	DSI_DEBUG("clk count=%d\n", num_clk);
 
 	for (i = 0; i < num_clk; i++) {
@@ -5698,6 +5704,11 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 				dsi_phy_dynamic_refresh_trigger_sel(ctrl->phy,
 						true);
 			}
+		}
+
+		if (display->panel->dfps_caps.dfps_send_cmd_with_te_async) {
+			if ((display->panel->dfps_caps.current_fps != 60)&&(display->panel->dfps_caps.current_fps != 90))
+				dsi_display_status_check_te(display,1);
 		}
 		rc = dsi_display_dfps_update(display, mode);
 		if (rc) {
@@ -9177,6 +9188,15 @@ int dsi_display_enable(struct dsi_display *display)
 			goto error;
 		}
 		dsi_panel_reset_param(display->panel);
+
+		if (display->panel->dfps_caps.dfps_send_cmd_support) {
+			display->panel->dfps_caps.current_fps = display->panel->dfps_caps.panel_on_fps;
+			if (mode->timing.refresh_rate != display->panel->dfps_caps.panel_on_fps) {
+				DSI_INFO("[%s] dst_refresh_rate %d panel_on_fps %d\n", __func__, mode->timing.refresh_rate, display->panel->dfps_caps.panel_on_fps);
+				dsi_panel_dfps_send_cmd(display->panel);
+			}
+		}
+
 		dsi_display_enable_status(display, true);
 	}
 	dsi_display_panel_id_notification(display);

@@ -125,6 +125,9 @@ struct dsi_dfps_capabilities {
 	u32 dfps_list_len;
 	bool dfps_support;
 	bool dfps_send_cmd_support;
+	bool dfps_send_cmd_with_te_async;
+	u32 panel_on_fps;
+	u32 current_fps;
 };
 
 struct dsi_qsync_capabilities {
@@ -234,11 +237,17 @@ struct dsi_panel_spr_info {
 
 struct dsi_panel_lhbm_config {
 	bool enable;
+	u32 dc_hybird_threshold;
 	bool resend_lbhm_off;
 	u32 dbv_level;
 	u32 alpha_reg;
 	u32 alpha_size;
 	u32 *alpha;
+	bool lhbm_wait_for_fps_valid;
+	u32 lhbm_wait_for_fps_count;
+	u32 lhbm_wait_for_fps_interval;
+	u32 *lhbm_not_allowed_fps_list;
+	u32 lhbm_not_allowed_fps_list_len;
 };
 
 enum panel_idx {
