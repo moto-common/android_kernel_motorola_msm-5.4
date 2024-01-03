@@ -117,6 +117,7 @@ config BANGKK_DTB
         depends on ARCH_QCOM
         default n
         bool "BANGKK DTBs"
+	select CAMERA_FLASH_IIC_COMPATIBLE
         help
                 Only include PENANG specific DTBs to limit the number that
                 get built during kernel compilation.
