@@ -1132,6 +1132,9 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 {
 	int ret = -EINVAL;
 	uint32_t ctrl_value = 0;
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
+	struct aw_device *aw_dev = NULL;
+#endif
 	aw_snd_soc_codec_t *codec =
 		aw_componet_codec_ops.kcontrol_codec(kcontrol);
 	struct aw882xx *aw882xx =
@@ -1140,6 +1143,9 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 	aw_dev_dbg(aw882xx->dev, "ucontrol->value.integer.value[0]=%ld",
 				ucontrol->value.integer.value[0]);
 
+#ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
+	aw_dev = aw882xx->aw_pa;
+#endif
 	ctrl_value = ucontrol->value.integer.value[0];
 
 	ret = aw_dev_set_afe_module_en(AW_RX_MODULE, ctrl_value);
@@ -1152,7 +1158,7 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 #ifdef CONFIG_AW882XX_ALGO_BIN_PARAMS
 	if (aw882xx->skt_prof_mode == AW_PARAMS_PATH_MODE) {
 		if (ctrl_value) {
-			ret = aw_dev_set_algo_params_path(aw882xx->aw_pa);
+			ret = aw_dev_set_algo_params_path(aw_dev);
 			if (ret < 0)
 				aw_dev_err(aw882xx->dev, "set algo params path failed, ret=%d", ret);
 		}
@@ -1160,7 +1166,7 @@ static int aw882xx_set_rx_en(struct snd_kcontrol *kcontrol,
 		if (aw882xx->aw_pa->pre_prof_id != AW_DEFAULT_PRO_ID) {
 			aw882xx->cur_algo_prof_id = aw882xx->aw_pa->pre_prof_id;
 			aw882xx->aw_pa->pre_prof_id = AW_DEFAULT_PRO_ID;
-			ret = aw_dev_skt_prof_mode(aw882xx->aw_pa, aw882xx->cur_algo_prof_id);
+			ret = aw_dev_skt_prof_mode(aw_dev, aw882xx->cur_algo_prof_id);
 			if (ret < 0) {
 				aw_dev_err(aw882xx->dev, "set algo prof failed");
 				return -EINVAL;

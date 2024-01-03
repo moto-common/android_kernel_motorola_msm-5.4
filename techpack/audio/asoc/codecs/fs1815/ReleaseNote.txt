@@ -1,0 +1,12 @@
+v4.0.8
+2022-12-08 c7d54d6 FSDRV(fs1815): 4*fs1815 with i2c*2 application
+2022-12-08 93ab5cc FSDRV(fs1815): SDZ pin 与友商兼容逻辑更新
+2022-11-18 c27e168 Merge "FSDRV(fs181599): Update i2c shutdown same as FS1815&FS1599" into spc-driver-v1
+2022-11-15 33ab193 FSDRV(fs181599): Update i2c shutdown same as FS1815&FS1599
+2022-11-15 7822aa7 FSDRV(fs1815): Update i2c shutdown to make sure device power down
+2022-07-12 2aa9943 Merge "fix(fs1815): Add soft reset and shutdown function" into spc-driver-v1
+2022-06-09 5006522 feat(fs181599): Add fs1815&fs1599 compat driver
+2022-06-16 4d6b5c2 fix(fs1815): Add soft reset and shutdown function
+2022-05-26 eb95fce fix(fs1815): fix typo error of function symbol
+2022-06-06 8fd4ca1 Merge "feat(fs1815): Add fs1815 i2c driver" into spc-driver-v1
+2022-04-07 f06858f feat(fs1815): Add fs1815 i2c driver
