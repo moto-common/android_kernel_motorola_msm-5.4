@@ -8,6 +8,7 @@
 #include "compress.h"
 #include <linux/prefetch.h>
 #include <linux/cpuhotplug.h>
+#include <uapi/linux/sched/types.h>
 #include <trace/events/erofs.h>
 
 /*
@@ -145,16 +146,14 @@ static void erofs_destroy_percpu_workers(void)
 
 static struct kthread_worker *erofs_init_percpu_worker(int cpu)
 {
+	static const struct sched_param sched_zero_prio;
 	struct kthread_worker *worker =
 		kthread_create_worker_on_cpu(cpu, 0, "erofs_worker/%u", cpu);
 
 	if (IS_ERR(worker))
 		return worker;
 	if (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))
-		sched_set_fifo_low(worker->task);
-	else
-		sched_set_normal(worker->task, 0);
-
+		sched_setscheduler_nocheck(worker->task, SCHED_RR, &sched_zero_prio);
 	return worker;
 }
 
@@ -280,7 +279,6 @@ out_error_pcpu_worker:
 out_error_workqueue_init:
 	z_erofs_destroy_pcluster_pool();
 out_error_pcluster_pool:
-
 	return err;
 }
 
@@ -922,9 +920,6 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
 
 	/* wake up the caller thread for sync decompression */
 	if (sync) {
-		unsigned long flags;
-
-		spin_lock_irqsave(&io->u.wait.lock, flags);
 		if (!atomic_add_return(bios, &io->pending_bios))
 			complete(&io->u.done);
 
@@ -1367,7 +1362,7 @@ jobqueue_init(struct super_block *sb,
 	} else {
 fg_out:
 		q = fgq;
-		init_waitqueue_head(&fgq->u.wait);
+		init_completion(&fgq->u.done);
 		atomic_set(&fgq->pending_bios, 0);
 	}
 	q->sb = sb;
@@ -1530,8 +1525,7 @@ static void z_erofs_runqueue(struct super_block *sb,
 		return;
 
 	/* wait until all bios are completed */
-	io_wait_event(io[JQ_SUBMIT].u.wait,
-		      !atomic_read(&io[JQ_SUBMIT].pending_bios));
+	wait_for_completion_io(&io[JQ_SUBMIT].u.done);
 
 	/* handle synchronous decompress queue in the caller context */
 	z_erofs_decompress_queue(&io[JQ_SUBMIT], pagepool);

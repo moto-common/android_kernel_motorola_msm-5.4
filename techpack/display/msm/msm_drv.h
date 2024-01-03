@@ -990,6 +990,8 @@ struct msm_drm_private {
 	struct mutex vm_client_lock;
 	struct list_head vm_client_list;
 	struct notifier_block msm_drv_notifier;
+
+	struct msm_idle idle;
 };
 
 /* get struct msm_kms * from drm_device * */
