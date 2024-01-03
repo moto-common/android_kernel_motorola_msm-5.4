@@ -1,0 +1,42 @@
+#
+# Focaltech Touchscreen driver configuration
+#
+
+config TOUCHSCREEN_FTS_V3
+    tristate "Focaltech Touchscreen v3"
+    default n
+    help
+      Say Y here if you have Focaltech touch panel.
+      If unsure, say N.
+
+config INPUT_FOCALTECH_V3_MMI_IC_NAME_FT3681
+        bool "Focaltech V3 Chip FT3681"
+        depends on TOUCHSCREEN_FTS_V3
+        default n
+        help
+          Say Y here to enable support for Focaltech FT3681 touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_V3_MMI_ENABLE_DOUBLE_TAP
+        bool "Enable Double Tap"
+        depends on INPUT_FOCALTECH_V3_MMI_IC_NAME_FT3681
+        default n
+        help
+          Say Y here to enable double tap functionality on Focaltech V3 touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_V3_MMI_ENABLE_PALM
+        bool "Enable Palm Sensing"
+        depends on INPUT_FOCALTECH_V3_MMI_IC_NAME_FT3681
+        default n
+        help
+          Say Y here to enable palm sensing functionality on Focaltech V3 touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_V3_MMI_PEN_NOTIFIER
+        bool "Enable Pen Notifier"
+        depends on INPUT_FOCALTECH_V3_MMI_IC_NAME_FT3681
+        default n
+        help
+          Say Y here to enable pen notifier functionality on Focaltech V3 touch panel.
+          If unsure, say N.

@@ -1,0 +1,17 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+EXTRA_CFLAGS += -I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/include \
+				-I$(ANDROID_BUILD_TOP)/motorola/kernel/modules/drivers/input/misc/rbs_fps_mmi
+
+ifneq ($(filter m y,$(CONFIG_EGIS_PANEL_NOTIFICATIONS)),)
+    EXTRA_CFLAGS += -DCONFIG_PANEL_NOTIFICATIONS
+endif
+
+
+ifneq ($(filter m y,$(CONFIG_MMI_RELAY)),)
+	EXTRA_CFLAGS += -DMMI_RELAY_MODULE
+endif
+
+rbs_fod_mmi-y += etxxx_fp.o
+
+obj-$(CONFIG_RBS_FOD_MMI) += rbs_fod_mmi.o

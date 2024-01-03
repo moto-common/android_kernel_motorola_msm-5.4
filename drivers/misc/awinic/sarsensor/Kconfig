@@ -1,0 +1,14 @@
+config AW96XX_POWER_SUPPLY_ONLINE
+	bool "AW96XX Power Supply Online"
+	default n
+	help
+	  Say Y here to enable the AW96XX power supply online feature.
+	  If unsure, say N.
+
+config AW96XX_SAR
+	tristate "AW96XX SAR Driver"
+	depends on INPUT
+	default n
+	help
+	  Say Y here to build the AW96XX SAR driver as a module.
+	  If unsure, say N.

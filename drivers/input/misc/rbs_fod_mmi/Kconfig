@@ -1,0 +1,15 @@
+config RBS_FOD_MMI
+	tristate "rbs fod mmi"
+	default n
+	help
+	 Say Y here if you wish to include support
+	 If unsure, say N.
+
+config EGIS_PANEL_NOTIFICATIONS
+	bool "panel notification support"
+	default n
+	depends on RBS_FOD_MMI
+	help
+	 Say Y here if you wish to include support
+         sysfs.
+	 If unsure, say N.

@@ -285,6 +285,7 @@ struct mmi_temp_zone {
 	int		fcc_norm_ma;
 };
 
+#define ZONE_35C_TO_45C 5
 #define MAX_NUM_STEPS 10
 enum mmi_temp_zones {
 	ZONE_FIRST = 0,
@@ -455,6 +456,8 @@ struct smb_mmi_charger {
 	bool			vbus_enabled;
 	int			prev_chg_rate;
 	int 			charger_rate;
+	int			power_watt;
+	int			pd_power;
 	int 			age;
 	int 			cycles;
 	int 			soc_cycles_start;
@@ -472,6 +475,14 @@ struct smb_mmi_charger {
 	int			inc_hvdcp_cnt;
 	int			hb_startup_cnt;
 	bool		ocp_flag;
+
+	/* none ffc paramter */
+	int			noffc_chg_iterm;
+	int			noffc_chg_iterm_45c;
+	int			noffc_qg_iterm;
+	int			noffc_max_fv;
+	int			pd_pps_active;
+	int			real_charger_type;
 };
 
 #define CHGR_FAST_CHARGE_CURRENT_CFG_REG	(CHGR_BASE + 0x61)
@@ -2375,6 +2386,7 @@ static void mmi_chrg_usb_vin_pd_config(struct smb_mmi_charger *chg, int vbus_mv)
 	if (!pd_active || !vbus_present) {
 		fsw_setted = false;
 		fixed_power_done = false;
+		chg->pd_power = 0;
 		return;
 	}
 
@@ -2403,6 +2415,7 @@ static void mmi_chrg_usb_vin_pd_config(struct smb_mmi_charger *chg, int vbus_mv)
 			req_pd_volt = (chg->pd_power_max * 1000 / (req_pd_curr / 1000)) * 1000 - req_pd_volt;
 			req_pd_volt = max(req_pd_volt, PPS_VOLT_MIN);
 			req_pd_volt = min(req_pd_volt, chg->mmi_pdo_info[i].uv_max);
+			chg->pd_power = chg->pd_power_max;
 			pps_active = true;
 			break;
 		}
@@ -2422,7 +2435,8 @@ static void mmi_chrg_usb_vin_pd_config(struct smb_mmi_charger *chg, int vbus_mv)
 				&& chg->mmi_pdo_info[i].uv_max >= MICRO_5V) {
 				req_pdo = chg->mmi_pdo_info[i].pdo_pos;
 				req_pd_volt = chg->mmi_pdo_info[i].uv_max;
-				req_pd_curr =  (chg->pd_power_max / (req_pd_volt / 1000)) * 1000;
+				req_pd_curr =  min((chg->pd_power_max / (req_pd_volt / 1000)) * 1000,chg->mmi_pdo_info[i].ua);
+				chg->pd_power = ((req_pd_volt/1000) * req_pd_curr)/1000;
 				fixed_active = true;
 			}
 		}
@@ -2480,6 +2494,9 @@ static void mmi_chrg_usb_vin_config(struct smb_mmi_charger *chg, int cur_mv)
 	if (!chg->usb_psy || !chg->qcom_psy)
 		return;
 
+	chg->pd_pps_active = 0;
+	chg->real_charger_type = 0;
+
 	if (cur_mv < HVDCP_VOLTAGE_MIN)
 		return;
 
@@ -2488,6 +2505,7 @@ static void mmi_chrg_usb_vin_config(struct smb_mmi_charger *chg, int cur_mv)
 		mmi_err(chg, "Couldn't read PD active rc=%d\n", rc);
 	} else if (val) {
 		mmi_dbg(chg, "Skip usb vbus voltage config for PD charger\n");
+		chg->pd_pps_active = val;
 		return;
 	}
 
@@ -2496,6 +2514,7 @@ static void mmi_chrg_usb_vin_config(struct smb_mmi_charger *chg, int cur_mv)
 		mmi_err(chg, "Couldn't read charger type rc=%d\n", rc);
 		return;
 	}
+	chg->real_charger_type = val;
 	if (val != QTI_POWER_SUPPLY_TYPE_USB_HVDCP_3)
 		return;
 
@@ -3235,6 +3254,29 @@ static int mmi_get_ffc_fv(struct smb_mmi_charger *chip, int zone)
        if (prm->ffc_zones == NULL || zone >= prm->num_temp_zones)
                return 0;
 
+	mmi_info(chip,"real_charger_type=%d, pd_pps_active=%d\n",chip->real_charger_type,
+		chip->pd_pps_active);
+	if ((chip->real_charger_type != QTI_POWER_SUPPLY_TYPE_USB_HVDCP_3P5) &&
+		(chip->pd_pps_active != QTI_POWER_SUPPLY_PD_PPS_ACTIVE) &&
+		(chip->noffc_chg_iterm != -EINVAL) &&
+		(chip->noffc_qg_iterm != -EINVAL) &&
+		(chip->noffc_max_fv != -EINVAL)) {
+		rc = smb_mmi_write_iio_chan(chip,
+			SMB5_QG_BATT_FULL_CURRENT, chip->noffc_qg_iterm);
+		if (rc < 0) {
+			mmi_err(chip, "Couldn't set batt full current, rc=%d\n", rc);
+		}
+		if ((zone == ZONE_35C_TO_45C) && (chip->noffc_chg_iterm_45c != -EINVAL)) {
+			prm->chrg_iterm = chip->noffc_chg_iterm_45c;
+		} else {
+			prm->chrg_iterm = chip->noffc_chg_iterm;
+		}
+		ffc_max_fv = chip->noffc_max_fv;
+		mmi_info(chip,"NONEFFC temp zone %d, fv %d mV, chg iterm %d mA, qg iterm %d mA\n",
+			zone, ffc_max_fv, prm->chrg_iterm, chip->noffc_qg_iterm);
+		return ffc_max_fv;
+	}
+
 	rc = smb_mmi_write_iio_chan(chip,
 			SMB5_QG_BATT_FULL_CURRENT, prm->ffc_zones[zone].ffc_qg_iterm);
 	if (rc < 0) {
@@ -3527,6 +3569,70 @@ static void smb_mmi_power_supply_changed(struct power_supply *psy,
 	power_supply_changed(psy);
 }
 
+static void smb_mmi_power_watt_report(struct smb_mmi_charger *chip)
+{
+	char *uevent_string = NULL;
+	char *envp[2];
+
+	uevent_string = kmalloc(CHG_SHOW_MAX_SIZE, GFP_KERNEL);
+	if (!uevent_string) {
+		mmi_err(chip, "Failed to Get Uevent Mem\n");
+		envp[0] = NULL;
+	} else {
+		scnprintf(uevent_string, CHG_SHOW_MAX_SIZE,
+			  "POWER_SUPPLY_POWER_WATT=%d",
+			  chip->power_watt / 1000);
+		envp[0] = uevent_string;
+		envp[1] = NULL;
+	}
+
+	if (chip->batt_psy) {
+		smb_mmi_power_supply_changed(chip->batt_psy, envp);
+	} else if (chip->qcom_psy) {
+		smb_mmi_power_supply_changed(chip->qcom_psy, envp);
+	}
+
+	kfree(uevent_string);
+}
+
+static int smb_mmi_get_chg_info(struct smb_mmi_charger *chip, struct smb_mmi_chg_status *stat)
+{
+	int usb_type;
+	int usb_icl;
+	int power_watt = 0;
+
+	if (stat->charger_present) {
+		usb_type = chip->real_charger_type;
+		if (usb_type == POWER_SUPPLY_TYPE_USB)
+			power_watt = 2500;
+		else if (usb_type == POWER_SUPPLY_TYPE_USB_CDP)
+			power_watt = 7500;
+		else if (usb_type == POWER_SUPPLY_TYPE_USB_DCP)
+			power_watt = 1000;
+		else if (usb_type == QTI_POWER_SUPPLY_TYPE_USB_HVDCP)
+			power_watt = chip->hvdcp_power_max;
+		else if (usb_type == QTI_POWER_SUPPLY_TYPE_USB_HVDCP_3)
+			power_watt = chip->hvdcp_power_max;
+		else if (usb_type == QTI_POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
+			power_watt = 30000;
+		else if (chip->pd_pps_active) {
+			if (chip->pd_pps_active == QTI_POWER_SUPPLY_PD_PPS_ACTIVE)
+				power_watt = 30000;
+			else
+				power_watt = (chip->pd_power != 0) ? chip->pd_power : 2500;
+		} else {
+			power_watt = 2500;
+		}
+
+		usb_icl = get_effective_result(chip->usb_icl_votable);
+		if (power_watt < (usb_icl * 5 / 1000))
+			power_watt = usb_icl * 5 / 1000;
+
+	}
+
+	return power_watt;
+}
+
 static int factory_kill_disable;
 module_param(factory_kill_disable, int, 0644);
 #define TWO_VOLT 2000000
@@ -3546,6 +3652,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int flip_cap = 0;
 	int flip_cap_full = 0;
 	int flip_age = 0;
+	int power_watt = 0;
 	int cap_err;
 	int report_cap;
 	int pc_online;
@@ -3665,6 +3772,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		mmi_warn(chip, "Factory Mode/Image so Limiting Charging!!!\n");
 
 	mmi_chrg_input_config(chip, &chg_stat);
+	power_watt = smb_mmi_get_chg_info(chip,&chg_stat);
 
 	if (chip->max_main_psy && chip->max_flip_psy) {
 		cap_err = 0;
@@ -3907,6 +4015,12 @@ sch_hb:
 
 	if (!chg_stat.charger_present)
 		smb_mmi_awake_vote(chip, false);
+
+	if ((chip->power_watt / 1000) != (power_watt / 1000)) {
+		chip->power_watt = power_watt;
+		smb_mmi_power_watt_report(chip);
+		mmi_info(chip, "charger power is %d mW\n", chip->power_watt);
+	}
 
 	chrg_rate_string = kmalloc(CHG_SHOW_MAX_SIZE, GFP_KERNEL);
 	if (!chrg_rate_string) {
@@ -4285,6 +4399,27 @@ static int parse_mmi_dt(struct smb_mmi_charger *chg)
 	if (rc)
 		chg->vfloat_comp_mv = 0;
 	chg->vfloat_comp_mv /= 1000;
+
+	// none ffc parameter
+	rc = of_property_read_u32(node, "qcom,noffc-chg-iterm",
+				  &chg->noffc_chg_iterm);
+	if (rc)
+		chg->noffc_chg_iterm = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,noffc-chg-iterm-45c",
+				  &chg->noffc_chg_iterm_45c);
+	if (rc)
+		chg->noffc_chg_iterm_45c = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,noffc-qg-iterm",
+				  &chg->noffc_qg_iterm);
+	if (rc)
+		chg->noffc_qg_iterm = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,noffc-max-fv",
+				  &chg->noffc_max_fv);
+	if (rc)
+		chg->noffc_max_fv = -EINVAL;
 
 	chg->enable_charging_limit =
 		of_property_read_bool(node, "qcom,enable-charging-limit");

@@ -94,3 +94,4 @@ obj-$(CONFIG_INPUT_SILEAD_FPS_MMI)	+= silead_fps_mmi/
 obj-$(CONFIG_INPUT_QPNP_POWER_ON_MMI)	+= qpnp_power_on_mmi/
 obj-$(CONFIG_INPUT_GOODIX_FOD_MMI)	+= goodix_fod_mmi/
 obj-$(CONFIG_INPUT_FOCAL_FPS_MMI)	+= focal_fps_mmi/
+obj-$(CONFIG_RBS_FOD_MMI)		+= rbs_fod_mmi/

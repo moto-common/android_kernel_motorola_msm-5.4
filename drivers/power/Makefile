@@ -16,3 +16,4 @@ obj-$(CONFIG_MMI_SC8549) += mmi_sc8549/
 obj-$(CONFIG_SM5602_FG)	+= sm5602_fg_mmi/
 obj-$(CONFIG_MMI_DISCRETE_TURBO_CHARGER) += mmi_discrete_turbo_charger/
 obj-$(CONFIG_BQ2597X_MMI_IIO_CHARGER)	+= bq2597x_mmi_iio/
+obj-$(CONFIG_BQ25980_MMI_IIO_CHARGER)	+= bq25980_mmi_iio/

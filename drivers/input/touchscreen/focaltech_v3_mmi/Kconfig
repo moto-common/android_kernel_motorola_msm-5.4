@@ -1,0 +1,47 @@
+config TOUCHSCREEN_FOCALTECH_V3_MMI
+        tristate "Moto Focaltech Touchscreen"
+        depends on I2C
+        default n
+        help
+          Say Y here if you have Moto Focaltech touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_MMI_IC_NAME_FT3519
+        bool "Focaltech Chip FT3519"
+        depends on INPUT_TOUCHSCREEN_MMI && TOUCHSCREEN_FOCALTECH_V3_MMI
+        default n
+        help
+          Say Y here to enable support for Focaltech FT3519 touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_MMI_IC_NAME_FT3518U
+        bool "Focaltech Chip FT3518U"
+        depends on INPUT_TOUCHSCREEN_MMI && TOUCHSCREEN_FOCALTECH_V3_MMI
+        default n
+        help
+          Say Y here to enable support for Focaltech FT3518U touch panel.
+          If unsure, say N.
+
+config INPUT_FOCALTECH_MMI_ENABLE_DOUBLE_TAP
+        bool "Enable Double Tap"
+        depends on INPUT_TOUCHSCREEN_MMI && TOUCHSCREEN_FOCALTECH_V3_MMI
+        default n
+        help
+          Say Y here to enable double tap functionality on Focaltech touch panel.
+          If unsure, say N.
+
+config INPUT_FTS_TEST_SUPPORT
+        bool "Focaltech Test Support"
+        depends on INPUT_TOUCHSCREEN_MMI && TOUCHSCREEN_FOCALTECH_V3_MMI
+        default n
+        help
+          Say Y here to enable support for Focaltech touchscreen test functionality.
+          If unsure, say N.
+
+config INPUT_FTS_MTK_V2_MMI_IC_NAME_FT3519
+        bool "Focaltech Chip FT3519 for Test Support"
+        depends on INPUT_FTS_TEST_SUPPORT && TOUCHSCREEN_FOCALTECH_V3_MMI
+        default n
+        help
+          Say Y here to enable support for Focaltech FT3519 in test mode.
+          If unsure, say N.

@@ -1,0 +1,17 @@
+config BQ25980_MMI_IIO_CHARGER
+        tristate "BQ25980 MMI IIO Charger"
+        default n
+        help
+         Say Y here if you have a bq25980 compatible
+         device connected.
+
+         This driver can also be built as a module.  If so, the module
+         will be called bq25980_mmi_iio.
+
+config MMI_BQ25980_BULK_READ
+	bool "MMI BQ25980 Bulk Read"
+	default n
+	help
+	  Say Y here to enable the MMI BQ25980 bulk read feature.
+	  If unsure, say N.
+
