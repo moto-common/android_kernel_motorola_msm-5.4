@@ -1,0 +1,5 @@
+# Ignore camera and display directory
+qcom/camera
+qcom/display
+bindings/display/qcom
+qcom/camera-legacy

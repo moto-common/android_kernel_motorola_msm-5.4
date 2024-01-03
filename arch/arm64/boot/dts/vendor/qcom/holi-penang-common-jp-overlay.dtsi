@@ -438,8 +438,8 @@
         };
 
         conn_therm {
-                polling-delay-passive = <5000>;
-                polling-delay = <20000>;
+                polling-delay-passive = <1000>;
+                polling-delay = <1000>;
                 thermal-governor = "user_space";
                 thermal-sensors = <&pm6125_adc_tm_iio ADC5_GPIO2_100K_PU>;
                 wake-capable-sensor;
@@ -482,11 +482,6 @@
                 };
         };
 
-};
-
-&mmi_discrete_charger {
-	mmi,usb-mosfet-supported;
-	mmi,mos-en-gpio = <&tlmm 58 0>;
 };
 
 &qupv3_se8_i2c {
@@ -618,7 +613,7 @@
 		0x08 0x220 /* IMP_CTRL1 */
 		0x58 0x224 /* IMP_CTRL2 */
 		0x37 0x240 /* TUNE1 */
-		0x2a 0x244 /* TUNE2 */
+		0x2b 0x244 /* TUNE2 */
 		0xca 0x248 /* TUNE3 */
 		0x04 0x24c /* TUNE4 */
 		0x03 0x250 /* TUNE5 */

@@ -100,6 +100,22 @@ blair-milanf-evb2-overlay.dtbo-base := blair-moto-milanf-base.dtb
 blair-milanf-dvt1-overlay.dtbo-base := blair-moto-milanf-base.dtb
 blair-milanf-dvt2-overlay.dtbo-base := blair-moto-milanf-base.dtb
 
+dtbo-$(CONFIG_BANGKK_DTB) += \
+        blair-bangkk-evb1-overlay.dtbo
+
+blair-bangkk-evb1-overlay.dtbo-base := blair-moto-bangkk-base.dtb
+
+dtbo-$(CONFIG_FOGOR_DTB) += \
+        blair-fogor-evb-overlay.dtbo
+
+blair-fogor-evb-overlay.dtbo-base := blair-moto-fogor-base.dtb
+
+dtbo-$(CONFIG_FOGO_DTB) += \
+        blair-fogo-evb-overlay.dtbo
+
+blair-fogo-evb-overlay.dtbo-base := blair-moto-fogo-base.dtb
+
+
 dtbo-$(CONFIG_PENANG_DTB) += \
         holi-penang-dvt2-jp-overlay.dtbo \
         holi-penang-dvt2-sb-overlay.dtbo \
@@ -108,6 +124,15 @@ dtbo-$(CONFIG_PENANG_DTB) += \
 holi-penang-evt1-overlay.dtbo-base := holi-moto-base.dtb
 holi-penang-dvt2-jp-overlay.dtbo-base := holi-moto-base.dtb
 holi-penang-dvt2-sb-overlay.dtbo-base := holi-moto-base.dtb
+
+dtbo-$(CONFIG_PENANGB_DTB) += \
+        holi-penangb-dvt2-jp-overlay.dtbo \
+        holi-penangb-dvt2-sb-overlay.dtbo \
+        holi-penangb-evt1-overlay.dtbo
+
+holi-penangb-evt1-overlay.dtbo-base := holi-moto-base.dtb
+holi-penangb-dvt2-jp-overlay.dtbo-base := holi-moto-base.dtb
+holi-penangb-dvt2-sb-overlay.dtbo-base := holi-moto-base.dtb
 
 dtbo-$(CONFIG_PNANGN_DTB) += \
         holi-pnangn-evt1-overlay.dtbo
