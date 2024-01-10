@@ -122,3 +122,4 @@ obj-$(CONFIG_TOUCHSCREEN_FTS_V3)	+= focaltech_touch_v3/
 obj-$(CONFIG_TOUCHSCREEN_MMI)	+= touchscreen_mmi/
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_BRL)	+= goodix_berlin_mmi/
 obj-$(CONFIG_TOUCHSCREEN_ILITEK_CHIPSET_MMI)	+= ili9882_mmi/
+obj-$(CONFIG_INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI)	+= focaltech_0flash_v2_mmi/

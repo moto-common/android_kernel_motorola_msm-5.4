@@ -1,0 +1,64 @@
+config INPUT_FOCALTECH_0FLASH_MMI_ENABLE_DOUBLE_TAP
+	bool "Enable Double Tap"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable double tap functionality on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_FOCALTECH_0FLASH_MMI_NOTIFY_TOUCH_STATE
+	bool "Notify Touch State"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable notification of touch state on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_FOCALTECH_ESD_EN
+	bool "Enable ESD"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable Electrostatic Discharge (ESD) support on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_FOCALTECH_PANEL_NOTIFICATIONS
+	bool "Enable Panel Notifications"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable panel notifications on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_FOCALTECH_DEBUG_EN
+	bool "Enable Debug"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable debugging features on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_FOCALTECH_PINCTRL_EN
+	bool "Enable Pin Control"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable Pin Control features on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config FOCALTECH_LAST_TIME
+	bool "Enable Last Time Feature"
+	depends on INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	default n
+	help
+	  Say Y here to enable the last time feature on Focaltech 0flash touch panel.
+	  If unsure, say N.
+
+config INPUT_TOUCHSCREEN_FOCALTECH_0FLASH_MMI
+	tristate "Focaltech 0flash Touchscreen MMI"
+	depends on INPUT_TOUCHSCREEN
+	default n
+	help
+	  Say Y here to build the Focaltech 0flash Touchscreen MMI driver as a module.
+	  If unsure, say N.
+
