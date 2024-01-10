@@ -1460,17 +1460,7 @@ CONFIG_NFC=y
 #
 # Near Field Communication (NFC) devices
 #
-CONFIG_SEC_NFC=m
-# CONFIG_SEC_NFC_PRODUCT_N3 is not set
-CONFIG_SEC_NFC_PRODUCT_N5=y
-# CONFIG_SEC_NFC_IF_UART is not set
-CONFIG_SEC_NFC_IF_I2C=y
-# CONFIG_SEC_NFC_IF_I2C_GPIO is not set
-# CONFIG_SEC_NFC_GPIO_CLK is not set
-CONFIG_SEC_NFC_DEDICATED_CLK=m
-CONFIG_SEC_NFC_LDO_EN=m
-CONFIG_SEC_NFC_PMIC_LDO=m
-CONFIG_SEC_ESE_COLDRESET=m
+# CONFIG_SEC_NFC is not set
 # end of Near Field Communication (NFC) devices
 # end of Near Field Communication (NFC) devices
 
