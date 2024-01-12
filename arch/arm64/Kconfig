@@ -1954,9 +1954,17 @@ config MMI_QC3P_TURBO_CHARGER
 
 config MMI_QC3P_WT6670_DETECTED
         bool "QC3P WT6670"
+        select MMI_QC3P_TURBO_CHARGER
         default n
         help
         Enable it only for products that support QC3P wt6670.
+
+config MMI_QC3P_Z350_DETECTED
+        bool "QC3P Z350"
+        select MMI_QC3P_TURBO_CHARGER
+        default n
+        help
+        Enable it only for products that support QC3P z350.
 
 config VIBRATOR_NOISE_CAMERA
         bool "control vibrator noise for camera"
