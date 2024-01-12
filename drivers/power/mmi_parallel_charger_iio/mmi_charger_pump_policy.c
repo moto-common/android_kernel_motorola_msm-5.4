@@ -43,8 +43,6 @@
 #include <linux/types.h>
 #include "mmi_charger_core.h"
 
-#define MINIMUM_CHARGER_VOLT			5100000
-
 typedef enum  {
 	PM_STATE_DISCONNECT,
 	PM_STATE_ENTRY,
@@ -200,7 +198,6 @@ void mmi_chrg_enable_all_cp(struct mmi_charger_manager *chip, int val)
 		cancel_delayed_work_sync(&chip->mmi_chrg_sm_work);
 		mmi_chrg_sm_move_state(chip, PM_STATE_CHRG_PUMP_ENTRY);
 		chip->cp_disable = false;
-		chip->recovery_pmic_chrg = false;
 		schedule_delayed_work(&chip->mmi_chrg_sm_work,
 				msecs_to_jiffies(0));
 
@@ -678,15 +675,6 @@ void mmi_chrg_sm_work_func(struct work_struct *work)
 			}
 		}
 
-		if (batt_soc >= 65) {
-			//Read the vbat aggin after the soc above 65%
-			msleep(20);
-			rc = power_supply_get_property(chrg_list->chrg_dev[CP_MASTER]->chrg_psy,
-							POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
-			if (!rc)
-				vbatt_volt = prop.intval*1000;
-		}
-
 		/*Initial setup pps request power by the battery voltage*/
 		chip->pd_request_volt = (2 * vbatt_volt) % 20000;
 		chip->pd_request_volt = 2 * vbatt_volt - chip->pd_request_volt
@@ -1156,7 +1144,7 @@ void mmi_chrg_sm_work_func(struct work_struct *work)
 		chip->pd_request_curr = TYPEC_HIGH_CURRENT_UA;
 		mmi_chrg_info(chip,"ibatt : %dmA, step cc curr : %dmA\n",
 						ibatt_curr, chrg_step->chrg_step_cc_curr);
-		if ((ibatt_curr > chrg_step->chrg_step_cc_curr) && (chip->pd_request_volt > MINIMUM_CHARGER_VOLT)) {
+		if (ibatt_curr > chrg_step->chrg_step_cc_curr) {
 			chip->pd_request_volt -= CV_DELTA_VOLT;
 
 			mmi_chrg_dbg(chip, PR_MOTO, "Reduce pps volt %dmV, curr %dmA\n ",
@@ -1291,14 +1279,6 @@ schedule:
 		mmi_chrg_info(chip, "Thermal is the highest, level %d, "
 						"Force enter into single pmic charging !\n",
 						chip->system_thermal_level);
-		if(chip->pd_sys_therm_volt == 0)
-			chip->pd_sys_therm_volt = SWITCH_CHARGER_PPS_VOLT;
-		if(chip->pd_sys_therm_curr == 0)
-			chip->pd_sys_therm_curr = TYPEC_HIGH_CURRENT_UA;
-		if(chip->pd_batt_therm_volt == 0)
-			chip->pd_batt_therm_volt = SWITCH_CHARGER_PPS_VOLT;
-		if(chip->pd_batt_therm_curr == 0)
-			chip->pd_batt_therm_curr = TYPEC_HIGH_CURRENT_UA;
 
 	} else if (chip->system_thermal_level > 0 &&
 		(sm_state == PM_STATE_CP_CC_LOOP ||

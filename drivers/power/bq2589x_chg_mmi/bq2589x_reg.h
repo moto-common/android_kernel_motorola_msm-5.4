@@ -1,6 +1,14 @@
 
 #ifndef __BQ2589X_HEADER__
 #define __BQ2589X_HEADER__
+#ifdef CONFIG_MMI_EXT_CHG_LED
+#define __indicator_led_en__
+#endif
+
+#ifdef __indicator_led_en__
+#include <linux/leds.h>
+#include <linux/pwm.h>
+#endif
 
 /* Register 00h */
 #define BQ2589X_REG_00      		0x00
@@ -146,6 +154,11 @@
 #define BQ2589X_TERM_ENABLE         1
 #define BQ2589X_TERM_DISABLE        0
 
+#define BQ2589X_EN_LED_MASK        0x40
+#define BQ2589X_EN_LED_SHIFT       6
+#define BQ2589X_LED_ENABLE         0
+#define BQ2589X_LED_DISABLE        1
+
 #define BQ2589X_WDT_MASK            0x30
 #define BQ2589X_WDT_SHIFT           4
 #define BQ2589X_WDT_DISABLE         0
@@ -224,6 +237,8 @@
 #define BQ2589X_BOOSTV_SHIFT        4
 #define BQ2589X_BOOSTV_BASE         4550
 #define BQ2589X_BOOSTV_LSB          64
+#define SC89890H_BOOSTV_BASE        3900
+#define SC89890H_BOOSTV_LSB         100
 
 
 #define BQ2589X_BOOST_LIM_MASK      0x07
@@ -236,6 +251,14 @@
 #define BQ2589X_BOOST_LIM_1800MA    0x05
 #define BQ2589X_BOOST_LIM_2100MA    0x06
 #define BQ2589X_BOOST_LIM_2400MA    0x07
+#define SC89890H_BOOST_LIM_500MA     0x00
+#define SC89890H_BOOST_LIM_750MA     0x01
+#define SC89890H_BOOST_LIM_1200MA    0x02
+#define SC89890H_BOOST_LIM_1400MA    0x03
+#define SC89890H_BOOST_LIM_1650MA    0x04
+#define SC89890H_BOOST_LIM_1875MA    0x05
+#define SC89890H_BOOST_LIM_2150MA    0x06
+#define SC89890H_BOOST_LIM_2450MA    0x07
 
 
 /* Register 0x0B*/
@@ -295,6 +318,10 @@
 #define BQ2589X_VINDPM_BASE         2600
 #define BQ2589X_VINDPM_LSB          100
 
+#define SC89890H_VINDPMOS_MASK      0x03
+#define SC89890H_VINDPMOS_SHIFT     0
+#define SC89890H_VINDPMOS_400MV     0
+#define SC89890H_VINDPMOS_600MV     1
 
 /* Register 0x0E*/
 #define BQ2589X_REG_0E              0x0E
@@ -366,7 +393,7 @@
 #define BQ2589X_DEV_REV_SHIFT       0
 
 
-#ifdef CONFIG_MMI_QC3P_TURBO_CHARGER
+#ifdef CONFIG_MMI_QC3P_WT6670_DETECTED
 enum WT_charger_type{
 	WT_CHG_TYPE_BEGIN = 0,
 	WT_CHG_TYPE_FC,
