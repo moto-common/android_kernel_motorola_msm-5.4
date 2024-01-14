@@ -141,7 +141,7 @@ static int charger_match_device_by_name(struct device *dev,
 	return strcmp(dev_name(dev), name) == 0;
 }
 
-struct mmi_charger_device *get_charger_by_name(const char *name)
+struct mmi_charger_device *get_charger_by_name_ext(const char *name)
 {
 	struct device *dev;
 
@@ -155,7 +155,7 @@ struct mmi_charger_device *get_charger_by_name(const char *name)
 
 int is_charger_exist(const char *name)
 {
-	if (get_charger_by_name(name) == NULL)
+	if (get_charger_by_name_ext(name) == NULL)
 		return 0;
 	return 1;
 }
